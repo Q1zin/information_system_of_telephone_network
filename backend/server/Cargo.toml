@@ -1,0 +1,39 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition.workspace = true
+default-run = "server"
+
+[dependencies]
+entity = { path = "../entity" }
+
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+rust_decimal = { workspace = true }
+
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.8", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-sessions = "0.14"
+time = "0.3"
+
+sqlx = { version = "0.8", default-features = false, features = [
+    "postgres",
+    "runtime-tokio-rustls",
+    "chrono",
+    "rust_decimal",
+    "json",
+] }
+
+argon2 = "0.5"
+config = { version = "0.15", default-features = false, features = ["toml"] }
+dotenvy = "0.15"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2"
+anyhow = "1"
+validator = { version = "0.20", features = ["derive"] }
+tower-sessions-sqlx-store = { version = "0.15.0", default-features = false, features = ["postgres"] }

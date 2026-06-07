@@ -52,8 +52,21 @@ Adminer (http://localhost:8081): System `PostgreSQL`, Server `db`, User/Pass/DB 
 
 - [x] Схема БД: 20+ таблиц, enum-типы, 6 триггеров целостности, 4 представления, справочники RBAC
 - [x] Демо-данные и валидация всех триггеров + ключевых аналитических запросов
-- [ ] Backend: Cargo workspace, entity, repository/service/api, auth/RBAC
-- [ ] 13 аналитических запросов + выполнение сырых запросов
+- [x] Backend: Cargo workspace (entity + server), конфиг, пул БД, маппинг ошибок БД→HTTP
+- [x] Аутентификация (Argon2 + серверные сессии) + RBAC (права из БД) + bootstrap суперадмина
+- [x] Generic CRUD по 13 сущностям (пагинация, права `entity:action`, чистый enum I/O)
+- [x] Выполнение сырых SELECT-запросов (READ ONLY tx, statement_timeout)
+- [~] Аналитика: реализованы Q1–Q4, Q9, Q10; остальные (Q5–Q8, Q11–Q13) — в работе
+- [ ] Админка RBAC (управление пользователями/ролями суперадмином)
 - [ ] Frontend: Vue SPA (CRUD, аналитика, админка ролей)
 
-См. [docs/schema.md](docs/schema.md) для описания модели данных.
+### Запуск backend
+
+```bash
+make db-up                       # PostgreSQL :5433 + Adminer
+make migrate seed DB="postgres://gts:gts@localhost:5433/gts"
+cd backend && cargo run          # API на http://localhost:8080
+# логин: admin / admin
+```
+
+См. [docs/schema.md](docs/schema.md) — модель данных, [docs/api.md](docs/api.md) — эндпоинты.
