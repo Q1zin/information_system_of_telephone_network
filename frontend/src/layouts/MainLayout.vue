@@ -14,7 +14,7 @@ const visibleResources = computed(() =>
 
 async function logout() {
   await auth.logout()
-  router.push({ name: 'login' })
+  router.push({ name: 'staff-login' })
 }
 </script>
 
@@ -23,28 +23,31 @@ async function logout() {
     <el-aside width="240px" class="aside">
       <div class="brand">📞 ГТС</div>
       <el-menu :default-active="route.path" router unique-opened>
-        <el-menu-item index="/dashboard">
+        <el-menu-item index="/app/dashboard">
           <el-icon><DataLine /></el-icon><span>Главная</span>
+        </el-menu-item>
+        <el-menu-item v-if="auth.can('queue:read')" index="/app/applications">
+          <el-icon><Tickets /></el-icon><span>Заявки на подключение</span>
         </el-menu-item>
         <el-sub-menu index="crud">
           <template #title><el-icon><Files /></el-icon><span>Справочники</span></template>
-          <el-menu-item v-for="r in visibleResources" :key="r.key" :index="`/crud/${r.key}`">
+          <el-menu-item v-for="r in visibleResources" :key="r.key" :index="`/app/crud/${r.key}`">
             {{ r.title }}
           </el-menu-item>
         </el-sub-menu>
-        <el-menu-item v-if="auth.can('analytics:read')" index="/analytics">
+        <el-menu-item v-if="auth.can('analytics:read')" index="/app/analytics">
           <el-icon><TrendCharts /></el-icon><span>Аналитика</span>
         </el-menu-item>
-        <el-menu-item v-if="auth.can('raw_query:run')" index="/raw-query">
+        <el-menu-item v-if="auth.can('raw_query:run')" index="/app/raw-query">
           <el-icon><Cpu /></el-icon><span>SQL-консоль</span>
         </el-menu-item>
-        <el-menu-item v-if="auth.can('billing_settings:read')" index="/settings">
+        <el-menu-item v-if="auth.can('billing_settings:read')" index="/app/settings">
           <el-icon><Money /></el-icon><span>Настройки биллинга</span>
         </el-menu-item>
         <el-sub-menu v-if="auth.can('user:read') || auth.can('role:read')" index="admin">
           <template #title><el-icon><Setting /></el-icon><span>Администрирование</span></template>
-          <el-menu-item v-if="auth.can('user:read')" index="/admin/users">Пользователи</el-menu-item>
-          <el-menu-item v-if="auth.can('role:read')" index="/admin/roles">Роли</el-menu-item>
+          <el-menu-item v-if="auth.can('user:read')" index="/app/admin/users">Пользователи</el-menu-item>
+          <el-menu-item v-if="auth.can('role:read')" index="/app/admin/roles">Роли</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>

@@ -6,6 +6,8 @@ mod openapi;
 mod crud;
 mod db;
 mod error;
+mod ops;
+mod portal;
 mod raw_query;
 mod resources;
 mod settings;
@@ -75,6 +77,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/analytics", analytics::router())
         .nest("/raw-query", raw_query::router())
         .nest("/billing-settings", settings::router())
+        .nest("/portal", portal::router())
+        .nest("/ops", ops::router())
         .merge(resources::api_router());
 
     let app = Router::new()

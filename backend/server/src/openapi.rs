@@ -92,6 +92,55 @@ struct RawQueryInput {
     sql: String,
 }
 
+#[derive(ToSchema)]
+struct CustomerRegister {
+    login: String,
+    password: String,
+    last_name: String,
+    first_name: String,
+    middle_name: Option<String>,
+    gender: String,
+    birth_date: String,
+    category: Option<String>,
+    privilege: Option<String>,
+}
+
+#[derive(ToSchema)]
+struct CustomerLogin {
+    login: String,
+    password: String,
+}
+
+#[derive(ToSchema)]
+struct ApplyInput {
+    postal_index: String,
+    district: String,
+    street: String,
+    house: String,
+    apartment: Option<String>,
+    desired_pbx_id: Option<i64>,
+}
+
+#[derive(ToSchema)]
+struct IntercityInput {
+    enabled: bool,
+}
+
+#[derive(ToSchema)]
+struct CallInput {
+    /// "local" | "intercity"
+    kind: String,
+    dest_number: Option<String>,
+    dest_city_id: Option<i64>,
+    duration_sec: Option<i32>,
+}
+
+#[derive(ToSchema)]
+struct ProvisionInput {
+    pbx_id: Option<i64>,
+    line_type: Option<String>,
+}
+
 // ------------------------------------------------------------------ auth paths
 
 #[utoipa::path(
@@ -276,6 +325,65 @@ fn admin_delete_user() {}
     responses((status = 200, body = Value)))]
 fn admin_set_user_roles() {}
 
+// ----------------------------------------------- customer portal (личный кабинет)
+
+#[utoipa::path(post, path = "/api/portal/register", tag = "portal",
+    request_body = CustomerRegister, responses((status = 200, body = Value)))]
+fn portal_register() {}
+
+#[utoipa::path(post, path = "/api/portal/login", tag = "portal",
+    request_body = CustomerLogin, responses((status = 200, body = Value), (status = 401, body = ErrorResponse)))]
+fn portal_login() {}
+
+#[utoipa::path(post, path = "/api/portal/logout", tag = "portal", responses((status = 200, body = StatusResponse)))]
+fn portal_logout() {}
+
+#[utoipa::path(get, path = "/api/portal/me", tag = "portal", responses((status = 200, body = Value)))]
+fn portal_me() {}
+
+#[utoipa::path(get, path = "/api/portal/overview", tag = "portal",
+    summary = "Линии, абонплата, долг, заявки", responses((status = 200, body = Value)))]
+fn portal_overview() {}
+
+#[utoipa::path(get, path = "/api/portal/applications", tag = "portal", responses((status = 200, body = Vec<Value>)))]
+fn portal_list_applications() {}
+
+#[utoipa::path(post, path = "/api/portal/applications", tag = "portal",
+    summary = "Подать заявку на подключение", request_body = ApplyInput, responses((status = 200, body = Value)))]
+fn portal_apply() {}
+
+#[utoipa::path(put, path = "/api/portal/lines/{number_id}/intercity", tag = "portal",
+    summary = "Включить/выключить межгород",
+    params(("number_id" = i64, Path)), request_body = IntercityInput, responses((status = 200, body = Value)))]
+fn portal_set_intercity() {}
+
+#[utoipa::path(post, path = "/api/portal/lines/{number_id}/call", tag = "portal",
+    summary = "Совершить (симулировать) звонок",
+    params(("number_id" = i64, Path)), request_body = CallInput, responses((status = 200, body = Value)))]
+fn portal_call() {}
+
+#[utoipa::path(get, path = "/api/portal/lines/{number_id}/calls", tag = "portal",
+    params(("number_id" = i64, Path)), responses((status = 200, body = Vec<Value>)))]
+fn portal_calls() {}
+
+#[utoipa::path(get, path = "/api/portal/invoices", tag = "portal", responses((status = 200, body = Vec<Value>)))]
+fn portal_invoices() {}
+
+#[utoipa::path(post, path = "/api/portal/invoices/{id}/pay", tag = "portal",
+    params(("id" = i64, Path)), responses((status = 200, body = Value)))]
+fn portal_pay() {}
+
+// ----------------------------------------------- operator actions
+
+#[utoipa::path(get, path = "/api/ops/applications", tag = "ops",
+    summary = "Заявки на подключение (для оператора)", responses((status = 200, body = Vec<Value>)))]
+fn ops_applications() {}
+
+#[utoipa::path(post, path = "/api/ops/applications/{id}/provision", tag = "ops",
+    summary = "Подключить заявку: выдать номер, создать абонента",
+    params(("id" = i64, Path)), request_body = ProvisionInput, responses((status = 200, body = Value)))]
+fn ops_provision() {}
+
 // ------------------------------------------------------------- security + doc
 
 struct SecurityAddon;
@@ -305,10 +413,15 @@ impl Modify for SecurityAddon {
         admin_list_permissions,
         admin_list_roles, admin_create_role, admin_update_role, admin_delete_role, admin_set_role_permissions,
         admin_list_users, admin_create_user, admin_update_user, admin_delete_user, admin_set_user_roles,
+        portal_register, portal_login, portal_logout, portal_me, portal_overview,
+        portal_list_applications, portal_apply, portal_set_intercity, portal_call, portal_calls,
+        portal_invoices, portal_pay,
+        ops_applications, ops_provision,
     ),
     components(schemas(
         LoginRequest, UserResponse, ErrorResponse, StatusResponse, CrudPage,
         RoleInput, PermissionIdsInput, RoleIdsInput, CreateUserInput, UpdateUserInput, RawQueryInput,
+        CustomerRegister, CustomerLogin, ApplyInput, IntercityInput, CallInput, ProvisionInput,
     )),
     modifiers(&SecurityAddon),
     security(("session_cookie" = [])),
@@ -318,6 +431,8 @@ impl Modify for SecurityAddon {
         (name = "analytics", description = "13 аналитических запросов варианта"),
         (name = "raw-query", description = "Выполнение сырых SELECT-запросов"),
         (name = "admin", description = "Управление пользователями, ролями и правами (RBAC)"),
+        (name = "portal", description = "Личный кабинет абонента (самообслуживание)"),
+        (name = "ops", description = "Операторские действия (подключение заявок)"),
     )
 )]
 pub struct ApiDoc;

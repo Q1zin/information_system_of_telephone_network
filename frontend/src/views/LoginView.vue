@@ -16,7 +16,7 @@ async function submit() {
   loading.value = true
   try {
     await auth.login(username.value, password.value)
-    router.push((route.query.redirect as string) || '/')
+    router.push((route.query.redirect as string) || '/app')
   } catch (e: any) {
     ElMessage.error(e.message || 'Ошибка входа')
   } finally {
@@ -28,7 +28,7 @@ async function submit() {
 <template>
   <div class="login-wrap">
     <el-card class="login-card">
-      <h2>Информационная система ГТС</h2>
+      <h2>Вход для сотрудников</h2>
       <el-form label-position="top" @submit.prevent="submit">
         <el-form-item label="Логин">
           <el-input v-model="username" />
@@ -40,6 +40,10 @@ async function submit() {
           Войти
         </el-button>
       </el-form>
+      <div class="links">
+        <router-link to="/portal">Личный кабинет абонента</router-link>
+        <router-link to="/">На главную</router-link>
+      </div>
     </el-card>
   </div>
 </template>
@@ -54,6 +58,12 @@ async function submit() {
 }
 .login-card {
   width: 360px;
+}
+.links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-size: 13px;
 }
 h2 {
   text-align: center;

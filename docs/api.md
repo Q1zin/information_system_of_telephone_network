@@ -72,6 +72,29 @@
 | PUT / DELETE | `/api/admin/users/{id}` | изменить (в т.ч. пароль) / удалить |
 | POST | `/api/admin/users/{id}/roles` | задать роли пользователю `{role_ids}` |
 
+## Личный кабинет абонента (сессия `customer_id`)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/api/portal/register` | регистрация абонента (ФИО, пол, дата рожд., категория) |
+| POST | `/api/portal/login` / `logout` | вход / выход |
+| GET | `/api/portal/me` | текущий абонент |
+| GET | `/api/portal/overview` | линии (+ абонплата), долг, заявки |
+| GET / POST | `/api/portal/applications` | список заявок / подать заявку на подключение |
+| GET | `/api/portal/pbx-options` · `/cities` · `/tariffs` | справочники для форм |
+| PUT | `/api/portal/lines/{number_id}/intercity` | включить/выключить межгород |
+| POST | `/api/portal/lines/{number_id}/call` | совершить (симулировать) звонок |
+| GET | `/api/portal/lines/{number_id}/calls` | история звонков |
+| GET | `/api/portal/invoices` | счета |
+| POST | `/api/portal/invoices/{id}/pay` | оплатить счёт |
+
+## Операторские действия (сессия оператора)
+
+| Метод | Путь | Право | Описание |
+|-------|------|-------|----------|
+| GET | `/api/ops/applications` | `queue:read` | заявки + данные абонента + свободные номера |
+| POST | `/api/ops/applications/{id}/provision` | `queue:update` | подключить: выдать номер, создать абонента, выставить счёт |
+
 ## Сырые запросы (право `raw_query:run`)
 
 | Метод | Путь | Тело |
