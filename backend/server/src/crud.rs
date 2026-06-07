@@ -10,8 +10,8 @@ use axum::{
     Json, Router,
 };
 use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, EntityTrait, IntoActiveModel, Iterable, PaginatorTrait,
-    PrimaryKeyToColumn, PrimaryKeyTrait, QueryOrder,
+    ActiveModelBehavior, ActiveModelTrait, EntityTrait, IdenStatic, IntoActiveModel, Iterable,
+    PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryOrder,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -122,10 +122,21 @@ where
     E: Resource,
     E::Model: Serialize + Send + Sync + IntoActiveModel<E::ActiveModel> + for<'de> Deserialize<'de>,
     E::ActiveModel: ActiveModelTrait<Entity = E> + ActiveModelBehavior + Send + Sync + Default,
+    E::PrimaryKey: PrimaryKeyToColumn<Column = E::Column> + PrimaryKeyTrait,
 {
     user.require(&format!("{}:create", E::NAME))?;
     let mut am = <E::ActiveModel as std::default::Default>::default();
-    am.set_from_json(payload)?;
+    am.set_from_json(payload.clone())?;
+    // `set_from_json` never writes primary keys. For non-auto-increment PKs the
+    // client supplies the value (e.g. the PBX subtype `pbx_id`).
+    if !E::PrimaryKey::auto_increment() {
+        for pk in E::PrimaryKey::iter() {
+            let col = pk.into_column();
+            if let Some(v) = payload.get(col.as_str()).and_then(|x| x.as_i64()) {
+                am.set(col, v.into());
+            }
+        }
+    }
     let model = am.insert(&st.db).await?;
     Ok(Json(model))
 }

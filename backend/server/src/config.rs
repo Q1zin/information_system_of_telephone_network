@@ -65,6 +65,7 @@ impl AppConfig {
             .add_source(config::File::with_name("config").required(false))
             .add_source(
                 config::Environment::with_prefix("GTS")
+                    .prefix_separator("__")
                     .separator("__")
                     .try_parsing(true),
             )

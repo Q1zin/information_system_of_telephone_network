@@ -38,6 +38,9 @@ async function logout() {
         <el-menu-item v-if="auth.can('raw_query:run')" index="/raw-query">
           <el-icon><Cpu /></el-icon><span>SQL-консоль</span>
         </el-menu-item>
+        <el-menu-item v-if="auth.can('billing_settings:read')" index="/settings">
+          <el-icon><Money /></el-icon><span>Настройки биллинга</span>
+        </el-menu-item>
         <el-sub-menu v-if="auth.can('user:read') || auth.can('role:read')" index="admin">
           <template #title><el-icon><Setting /></el-icon><span>Администрирование</span></template>
           <el-menu-item v-if="auth.can('user:read')" index="/admin/users">Пользователи</el-menu-item>

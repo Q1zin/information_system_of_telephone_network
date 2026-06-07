@@ -12,6 +12,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'crud/:resource', name: 'crud', component: () => import('@/views/CrudView.vue') },
       { path: 'analytics', name: 'analytics', component: () => import('@/views/AnalyticsView.vue'), meta: { perm: 'analytics:read' } },
       { path: 'raw-query', name: 'raw-query', component: () => import('@/views/RawQueryView.vue'), meta: { perm: 'raw_query:run' } },
+      { path: 'settings', name: 'settings', component: () => import('@/views/SettingsView.vue'), meta: { perm: 'billing_settings:read' } },
       { path: 'admin/users', name: 'admin-users', component: () => import('@/views/admin/UsersView.vue'), meta: { perm: 'user:read' } },
       { path: 'admin/roles', name: 'admin-roles', component: () => import('@/views/admin/RolesView.vue'), meta: { perm: 'role:read' } },
     ],

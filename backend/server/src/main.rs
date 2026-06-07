@@ -8,6 +8,7 @@ mod db;
 mod error;
 mod raw_query;
 mod resources;
+mod settings;
 mod state;
 
 use std::sync::Arc;
@@ -73,6 +74,7 @@ async fn main() -> anyhow::Result<()> {
         .nest("/admin", admin::router())
         .nest("/analytics", analytics::router())
         .nest("/raw-query", raw_query::router())
+        .nest("/billing-settings", settings::router())
         .merge(resources::api_router());
 
     let app = Router::new()

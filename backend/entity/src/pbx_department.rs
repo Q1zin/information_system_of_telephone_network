@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "pbx_department")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub pbx_id: i64,
     #[sea_orm(column_type = "Text")]
     #[serde(default)]

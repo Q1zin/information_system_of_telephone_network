@@ -24,6 +24,7 @@ export interface ResourceDef {
   perm: string // permission resource name (entity)
   columns: ColumnDef[]
   fields: FieldDef[]
+  idField?: string // primary-key field name (default 'id')
 }
 
 const t = (prop: string, label: string, required = false): FieldDef => ({ prop, label, type: 'text', required })
@@ -58,6 +59,30 @@ export const resources: ResourceDef[] = [
       n('total_channels', 'Всего каналов', true), n('free_channels', 'Свободно каналов', true),
       { prop: 'has_free_cable', label: 'Есть кабель', type: 'switch' },
     ],
+  },
+  {
+    key: 'pbx-city', path: 'pbx-city', title: 'АТС: городские', perm: 'pbx_city', idField: 'pbx_id',
+    columns: [
+      { prop: 'pbx_id', label: 'ID АТС', width: 90 }, { prop: 'intercity_enabled', label: 'Межгород вкл.' },
+      { prop: 'region_code', label: 'Код региона' },
+    ],
+    fields: [n('pbx_id', 'ID АТС (city)', true), { prop: 'intercity_enabled', label: 'Межгород включён', type: 'switch' }, t('region_code', 'Код региона')],
+  },
+  {
+    key: 'pbx-department', path: 'pbx-department', title: 'АТС: ведомственные', perm: 'pbx_department', idField: 'pbx_id',
+    columns: [
+      { prop: 'pbx_id', label: 'ID АТС', width: 90 }, { prop: 'department_name', label: 'Ведомство' },
+      { prop: 'closed_network', label: 'Замкнутая сеть' },
+    ],
+    fields: [n('pbx_id', 'ID АТС (departmental)', true), t('department_name', 'Ведомство', true), { prop: 'closed_network', label: 'Замкнутая сеть', type: 'switch' }],
+  },
+  {
+    key: 'pbx-institution', path: 'pbx-institution', title: 'АТС: учрежденческие', perm: 'pbx_institution', idField: 'pbx_id',
+    columns: [
+      { prop: 'pbx_id', label: 'ID АТС', width: 90 }, { prop: 'institution_name', label: 'Учреждение' },
+      { prop: 'parent_department', label: 'Вышестоящее' }, { prop: 'closed_network', label: 'Замкнутая сеть' },
+    ],
+    fields: [n('pbx_id', 'ID АТС (institutional)', true), t('institution_name', 'Учреждение', true), t('parent_department', 'Вышестоящее ведомство'), { prop: 'closed_network', label: 'Замкнутая сеть', type: 'switch' }],
   },
   {
     key: 'phone-numbers', path: 'phone-numbers', title: 'Номера', perm: 'phone_number',

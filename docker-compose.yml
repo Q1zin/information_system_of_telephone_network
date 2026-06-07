@@ -1,6 +1,9 @@
-# Infrastructure for the City Telephone Network (ГТС) information system.
-# `docker compose up -d db` is enough to get a database for development.
-# backend/frontend services are added once their Dockerfiles exist.
+# Full stack for the City Telephone Network (ГТС) information system.
+#   docker compose up --build
+# Then open:
+#   Frontend  http://localhost:8090   (admin / admin)
+#   Backend   http://localhost:8080   (Swagger: /swagger-ui/)
+#   Adminer   http://localhost:8081
 services:
   db:
     image: postgres:18
@@ -21,15 +24,68 @@ services:
       timeout: 5s
       retries: 10
 
+  # One-shot: applies SQL migrations + demo seed on a fresh database.
+  migrate:
+    image: postgres:18
+    container_name: gts_migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGUSER: ${POSTGRES_USER:-gts}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-gts}
+      PGDATABASE: ${POSTGRES_DB:-gts}
+      DB_HOST: db
+    volumes:
+      - ./backend/migrations:/migrations:ro
+      - ./backend/seeds:/seeds:ro
+      - ./backend/scripts/migrate.sh:/migrate.sh:ro
+    entrypoint: ["bash", "/migrate.sh"]
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gts_backend
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      GTS__DATABASE__HOST: db
+      GTS__DATABASE__PORT: "5432"
+      GTS__DATABASE__USER: ${POSTGRES_USER:-gts}
+      GTS__DATABASE__PASSWORD: ${POSTGRES_PASSWORD:-gts}
+      GTS__DATABASE__NAME: ${POSTGRES_DB:-gts}
+      GTS__SERVER__HOST: 0.0.0.0
+      GTS__SERVER__PORT: "8080"
+      GTS__AUTH__SUPERADMIN_USERNAME: ${SUPERADMIN_USERNAME:-admin}
+      GTS__AUTH__SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-admin}
+      RUST_LOG: info,sqlx=warn
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gts_frontend
+    depends_on:
+      - backend
+    ports:
+      - "8090:80"
+
   adminer:
     image: adminer:latest
     container_name: gts_adminer
     restart: unless-stopped
-    ports:
-      - "8081:8080"
     depends_on:
       db:
         condition: service_healthy
+    ports:
+      - "8081:8080"
 
 volumes:
   db_data:

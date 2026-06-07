@@ -13,6 +13,9 @@ macro_rules! resource {
 }
 
 resource!(pbx, "pbx");
+resource!(pbx_city, "pbx_city");
+resource!(pbx_department, "pbx_department");
+resource!(pbx_institution, "pbx_institution");
 resource!(subscriber, "subscriber");
 resource!(phone_number, "phone_number");
 resource!(address, "address");
@@ -30,6 +33,9 @@ resource!(public_phone, "public_phone");
 pub fn api_router() -> Router<AppState> {
     Router::new()
         .nest("/pbx", crud_routes::<entity::pbx::Entity>())
+        .nest("/pbx-city", crud_routes::<entity::pbx_city::Entity>())
+        .nest("/pbx-department", crud_routes::<entity::pbx_department::Entity>())
+        .nest("/pbx-institution", crud_routes::<entity::pbx_institution::Entity>())
         .nest("/subscribers", crud_routes::<entity::subscriber::Entity>())
         .nest("/phone-numbers", crud_routes::<entity::phone_number::Entity>())
         .nest("/addresses", crud_routes::<entity::address::Entity>())

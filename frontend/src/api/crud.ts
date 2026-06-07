@@ -21,3 +21,7 @@ export const runAnalytics = (path: string, params: Row) =>
 
 export const runRawQuery = (sql: string) =>
   api.post<Row[]>('/raw-query', { sql }).then((r) => r.data)
+
+export const getBillingSettings = () => api.get<Row>('/billing-settings').then((r) => r.data)
+export const updateBillingSettings = (body: Row) =>
+  api.put<Row>('/billing-settings', body).then((r) => r.data)

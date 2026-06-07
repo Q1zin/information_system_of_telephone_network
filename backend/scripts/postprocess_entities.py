@@ -48,8 +48,17 @@ def serde_attr_for(ty: str):
     return "#[serde(default)]"
 
 
+def fix_nonserial_pk(text: str) -> str:
+    """Non-serial primary keys (e.g. subtype pbx_id) must be settable on create."""
+    return re.sub(
+        r"(#\[sea_orm\(primary_key, auto_increment = false\)\]\n\s*)#\[serde\(skip_deserializing\)\]",
+        r"\1#[serde(default)]",
+        text,
+    )
+
+
 def patch_model(f: pathlib.Path):
-    lines = f.read_text().splitlines()
+    lines = fix_nonserial_pk(f.read_text()).splitlines()
     out = []
     for i, line in enumerate(lines):
         m = FIELD_RE.match(line)

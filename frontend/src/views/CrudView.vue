@@ -11,6 +11,7 @@ const route = useRoute()
 const auth = useAuthStore()
 
 const resource = computed(() => resourceByKey(route.params.resource as string))
+const idKey = computed(() => resource.value?.idField || 'id')
 
 const rows = ref<Row[]>([])
 const total = ref(0)
@@ -49,10 +50,13 @@ function openCreate() {
   dialogVisible.value = true
 }
 function openEdit(row: Row) {
-  editingId.value = row.id
+  editingId.value = row[idKey.value]
   clearForm()
   Object.assign(form, row)
   dialogVisible.value = true
+}
+function isPkLocked(prop: string) {
+  return editingId.value != null && prop === idKey.value
 }
 async function submitForm() {
   if (!resource.value) return
@@ -69,12 +73,12 @@ async function submitForm() {
 async function remove(row: Row) {
   if (!resource.value) return
   try {
-    await ElMessageBox.confirm(`Удалить запись #${row.id}?`, 'Подтверждение', { type: 'warning' })
+    await ElMessageBox.confirm(`Удалить запись #${row[idKey.value]}?`, 'Подтверждение', { type: 'warning' })
   } catch {
     return
   }
   try {
-    await deleteResource(resource.value.path, row.id)
+    await deleteResource(resource.value.path, row[idKey.value])
     ElMessage.success('Удалено')
     load()
   } catch (e: any) {
@@ -139,11 +143,12 @@ onMounted(load)
     >
       <el-form label-position="top">
         <el-form-item v-for="f in resource.fields" :key="f.prop" :label="f.label">
-          <el-input v-if="f.type === 'text'" v-model="form[f.prop]" clearable />
+          <el-input v-if="f.type === 'text'" v-model="form[f.prop]" :disabled="isPkLocked(f.prop)" clearable />
           <el-input v-else-if="f.type === 'textarea'" v-model="form[f.prop]" type="textarea" />
           <el-input-number
             v-else-if="f.type === 'number'"
             v-model="form[f.prop]"
+            :disabled="isPkLocked(f.prop)"
             :controls="false"
             style="width: 100%"
           />
