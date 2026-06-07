@@ -32,20 +32,35 @@
 Нарушения целостности БД (триггеры, CHECK/UNIQUE/FK) возвращаются как
 `400/409` с человекочитаемым сообщением, а не `500`.
 
-## Аналитика (право `analytics:read`)
+## Аналитика — все 13 запросов варианта (право `analytics:read`)
 
-| Путь | Запрос варианта | Параметры |
-|------|-----------------|-----------|
+| Путь | Запрос | Параметры |
+|------|--------|-----------|
 | `/api/analytics/subscribers` | Q1 — абоненты АТС | `pbx_id, category, min_age, max_age, surname` |
 | `/api/analytics/free-numbers` | Q2 — свободные номера | `pbx_id, district` |
 | `/api/analytics/debtors` | Q3 — должники | `pbx_id, district, min_days, kind, min_amount` |
 | `/api/analytics/pbx-debt-ranking` | Q4 — АТС по долгам | `pbx_type` |
+| `/api/analytics/public-phones` | Q5 — таксофоны/общественные | `pbx_id, district, kind` |
+| `/api/analytics/category-ratio` | Q6 — доля простых/льготных (%) | `pbx_id, district, pbx_type` |
+| `/api/analytics/parallel-subscribers` | Q7 — абоненты с параллельными | `pbx_id, district, pbx_type, privileged_only` |
+| `/api/analytics/phones-by-address` | Q8 — телефоны по адресу/дому/улице | `district, street, house` |
 | `/api/analytics/top-intercity-city` | Q9 — город-лидер межгорода | — |
 | `/api/analytics/subscriber-by-number` | Q10 — инфо по номеру | `number` |
+| `/api/analytics/splittable-paired` | Q11 — расспариваемые спаренные | `pbx_id` |
+| `/api/analytics/low-external-call-numbers` | Q12 — внутр. номера с < N внешних звонков | `pbx_id, from, to, max_calls` |
+| `/api/analytics/action-needed-debtors` | Q13 — кандидаты на уведомление/отключение | `pbx_id, district` |
 
-_Планируются:_ Q5 (таксофоны), Q6 (доля льготников), Q7 (параллельные),
-Q8 (телефоны по адресу), Q11 (расспаривание), Q12 (внешние звонки),
-Q13 (кандидаты на уведомление/отключение).
+## Админка RBAC (права `user:*`, `role:*`, `rbac:manage`)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/admin/permissions` | каталог прав |
+| GET / POST | `/api/admin/roles` | список ролей (с правами) / создать роль |
+| PUT / DELETE | `/api/admin/roles/{id}` | изменить / удалить (системные нельзя) |
+| POST | `/api/admin/roles/{id}/permissions` | задать права роли `{permission_ids}` |
+| GET / POST | `/api/admin/users` | список пользователей (с ролями) / создать |
+| PUT / DELETE | `/api/admin/users/{id}` | изменить (в т.ч. пароль) / удалить |
+| POST | `/api/admin/users/{id}/roles` | задать роли пользователю `{role_ids}` |
 
 ## Сырые запросы (право `raw_query:run`)
 

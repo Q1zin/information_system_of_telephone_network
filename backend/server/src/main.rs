@@ -1,3 +1,4 @@
+mod admin;
 mod analytics;
 mod auth;
 mod config;
@@ -66,6 +67,7 @@ async fn main() -> anyhow::Result<()> {
 
     let api = Router::new()
         .nest("/auth", auth::routes::router())
+        .nest("/admin", admin::router())
         .nest("/analytics", analytics::router())
         .nest("/raw-query", raw_query::router())
         .merge(resources::api_router());
