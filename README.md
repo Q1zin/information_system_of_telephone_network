@@ -66,6 +66,7 @@ Adminer (http://localhost:8081): System `PostgreSQL`, Server `db`, User/Pass/DB 
 - [x] Выполнение сырых SELECT-запросов (READ ONLY tx, statement_timeout)
 - [x] Аналитика: все 13 запросов варианта (Q1–Q13)
 - [x] Админка RBAC: управление пользователями/ролями/правами суперадмином (req. 7)
+- [x] Swagger / OpenAPI 3.1 (utoipa) — интерактивная документация всего API на `/swagger-ui/`
 - [x] Frontend: Vue 3 SPA — логин, CRUD по всем сущностям, аналитика, SQL-консоль, админка
 
 **Проект функционально завершён** по всем требованиям задания.
@@ -79,6 +80,7 @@ make migrate seed DB="postgres://gts:gts@localhost:5433/gts"
 
 # 2. Backend (Rust)
 cd backend && cargo run          # API на http://localhost:8080
+#                                # Swagger UI: http://localhost:8080/swagger-ui/
 
 # 3. Frontend (Vue)
 cd frontend && npm install && npm run dev   # SPA на http://localhost:5173

@@ -2,6 +2,7 @@ mod admin;
 mod analytics;
 mod auth;
 mod config;
+mod openapi;
 mod crud;
 mod db;
 mod error;
@@ -20,6 +21,8 @@ use serde_json::{json, Value};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tower_sessions::{Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::PostgresStore;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{config::AppConfig, state::AppState};
 
@@ -73,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
         .merge(resources::api_router());
 
     let app = Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .route("/health", get(health))
         .nest("/api", api)
         .layer(session_layer)

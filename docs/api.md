@@ -4,6 +4,10 @@
 (`tower-sessions`, стор в Postgres). Все эндпоинты, кроме `/health` и
 `/api/auth/login`, требуют валидной сессии; доступ ограничен правами RBAC.
 
+> **Интерактивная документация (Swagger UI):** http://localhost:8080/swagger-ui/
+> Спецификация OpenAPI 3.1: http://localhost:8080/api-docs/openapi.json
+> Сначала войдите через `POST /api/auth/login` — cookie-сессия подхватится для «Try it out».
+
 ## Аутентификация
 
 | Метод | Путь | Описание | Право |

@@ -37,3 +37,5 @@ thiserror = "2"
 anyhow = "1"
 validator = { version = "0.20", features = ["derive"] }
 tower-sessions-sqlx-store = { version = "0.15.0", default-features = false, features = ["postgres"] }
+utoipa = { version = "5.5.0", features = ["axum_extras", "chrono", "decimal"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
