@@ -18,9 +18,15 @@
 
 ## CRUD (одинаковый контракт для всех ресурсов)
 
-Ресурсы: `pbx`, `subscribers`, `phone-numbers`, `addresses`, `cities`,
-`calls`, `tariffs`, `invoices`, `payments`, `penalties`, `notifications`,
-`queue`, `public-phones`.
+Ресурсы: `pbx`, `pbx-city`, `pbx-department`, `pbx-institution`, `subscribers`,
+`phone-numbers`, `addresses`, `cities`, `calls`, `tariffs`, `invoices`,
+`payments`, `penalties`, `notifications`, `queue`, `public-phones`.
+
+Подтипы АТС (`pbx-city/department/institution`) имеют PK `pbx_id` — его нужно
+передать при создании (он же — id существующей АТС нужного типа).
+
+**Настройки биллинга (singleton):** `GET`/`PUT /api/billing-settings`
+(права `billing_settings:read` / `billing_settings:update`).
 
 | Метод | Путь | Описание | Право |
 |-------|------|----------|-------|

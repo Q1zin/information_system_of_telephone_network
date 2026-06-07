@@ -62,7 +62,7 @@ Adminer (http://localhost:8081): System `PostgreSQL`, Server `db`, User/Pass/DB 
 - [x] Демо-данные и валидация всех триггеров + ключевых аналитических запросов
 - [x] Backend: Cargo workspace (entity + server), конфиг, пул БД, маппинг ошибок БД→HTTP
 - [x] Аутентификация (Argon2 + серверные сессии) + RBAC (права из БД) + bootstrap суперадмина
-- [x] Generic CRUD по 13 сущностям (пагинация, права `entity:action`, чистый enum I/O)
+- [x] Generic CRUD по **всем** сущностям: 16 ресурсов (вкл. подтипы АТС) + настройки биллинга + админка (пагинация, права `entity:action`, чистый enum I/O)
 - [x] Выполнение сырых SELECT-запросов (READ ONLY tx, statement_timeout)
 - [x] Аналитика: все 13 запросов варианта (Q1–Q13)
 - [x] Админка RBAC: управление пользователями/ролями/правами суперадмином (req. 7)
@@ -71,21 +71,28 @@ Adminer (http://localhost:8081): System `PostgreSQL`, Server `db`, User/Pass/DB 
 
 **Проект функционально завершён** по всем требованиям задания.
 
-### Запуск
+### Запуск — всё одной командой (Docker)
 
 ```bash
-# 1. База данных
-make db-up                       # PostgreSQL :5433 + Adminer :8081
-make migrate seed DB="postgres://gts:gts@localhost:5433/gts"
-
-# 2. Backend (Rust)
-cd backend && cargo run          # API на http://localhost:8080
-#                                # Swagger UI: http://localhost:8080/swagger-ui/
-
-# 3. Frontend (Vue)
-cd frontend && npm install && npm run dev   # SPA на http://localhost:5173
+docker compose up --build
 ```
 
-Открыть http://localhost:5173, войти как **admin / admin**.
+Поднимаются: PostgreSQL → сервис миграций (схема + демо-данные) → backend → frontend → Adminer.
+
+| Сервис | URL |
+|--------|-----|
+| **Frontend (SPA)** | http://localhost:8090 (вход **admin / admin**) |
+| Backend API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui/ |
+| Adminer | http://localhost:8081 |
+
+### Локальная разработка (без Docker)
+
+```bash
+make db-up                                  # только PostgreSQL :5433 + Adminer
+make migrate seed DB="postgres://gts:gts@localhost:5433/gts"
+cd backend  && cargo run                    # API :8080 (+ Swagger /swagger-ui/)
+cd frontend && npm install && npm run dev   # SPA :5173 (прокси на :8080)
+```
 
 См. [docs/schema.md](docs/schema.md) — модель данных, [docs/api.md](docs/api.md) — эндпоинты.
