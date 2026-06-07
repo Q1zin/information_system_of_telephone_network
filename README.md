@@ -21,11 +21,19 @@
 backend/
   migrations/   -- SQL-схема: таблицы, enum-типы, триггеры, представления, справочники
   seeds/        -- демо-данные (dev_seed.sql)
-  (src/ и Cargo — добавляются на следующем этапе)
-frontend/       -- Vue SPA (добавляется позже)
+  entity/       -- SeaORM entity (сгенерированы + post-process)
+  server/       -- Axum: config, auth, RBAC, crud, analytics, raw_query, admin
+  scripts/      -- postprocess_entities.py
+frontend/
+  src/api/      -- HTTP-клиент, типы
+  src/stores/   -- Pinia (auth)
+  src/router/   -- маршруты + guard по правам
+  src/config/   -- дескрипторы ресурсов, каталог 13 запросов, enum-справочники
+  src/views/    -- Login, Dashboard, Crud, Analytics, RawQuery, admin/{Users,Roles}
 docker-compose.yml
 Makefile
-docs/schema.md  -- описание модели данных и привязка к 13 запросам
+docs/schema.md  -- модель данных и привязка к 13 запросам
+docs/api.md     -- HTTP API
 ```
 
 ## Быстрый старт (база данных)
@@ -58,15 +66,24 @@ Adminer (http://localhost:8081): System `PostgreSQL`, Server `db`, User/Pass/DB 
 - [x] Выполнение сырых SELECT-запросов (READ ONLY tx, statement_timeout)
 - [x] Аналитика: все 13 запросов варианта (Q1–Q13)
 - [x] Админка RBAC: управление пользователями/ролями/правами суперадмином (req. 7)
-- [ ] Frontend: Vue SPA (CRUD, аналитика, админка ролей)
+- [x] Frontend: Vue 3 SPA — логин, CRUD по всем сущностям, аналитика, SQL-консоль, админка
 
-### Запуск backend
+**Проект функционально завершён** по всем требованиям задания.
+
+### Запуск
 
 ```bash
-make db-up                       # PostgreSQL :5433 + Adminer
+# 1. База данных
+make db-up                       # PostgreSQL :5433 + Adminer :8081
 make migrate seed DB="postgres://gts:gts@localhost:5433/gts"
+
+# 2. Backend (Rust)
 cd backend && cargo run          # API на http://localhost:8080
-# логин: admin / admin
+
+# 3. Frontend (Vue)
+cd frontend && npm install && npm run dev   # SPA на http://localhost:5173
 ```
+
+Открыть http://localhost:5173, войти как **admin / admin**.
 
 См. [docs/schema.md](docs/schema.md) — модель данных, [docs/api.md](docs/api.md) — эндпоинты.
