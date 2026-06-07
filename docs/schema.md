@@ -1,5 +1,10 @@
 # Модель данных ГТС
 
+> Полная диаграмма в формате **DBML**: [schema.dbml](schema.dbml).
+> Открыть визуально — [dbdiagram.io](https://dbdiagram.io) → *Import* → вставить DBML,
+> либо [dbml.org/playground](https://dbml.org/playground).
+
+
 ## Сущности
 
 ### Геолокация и АТС

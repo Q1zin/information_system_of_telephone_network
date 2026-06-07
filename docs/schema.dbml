@@ -1,0 +1,430 @@
+// ============================================================================
+// Информационная система городской телефонной сети (ГТС)
+// DBML-схема всей базы данных. Открыть на https://dbdiagram.io
+// (Database > Import > paste DBML) или https://dbml.org/playground.
+// ============================================================================
+
+Project gts {
+  database_type: 'PostgreSQL'
+  Note: '''
+    Городская телефонная сеть: АТС (3 типа через наследование), абоненты, номера,
+    адреса, биллинг, межгородние звонки (CDR), очередь установки, таксофоны,
+    а также аутентификация и настраиваемый RBAC.
+    Целостность вынесена на уровень БД: триггеры + CHECK/UNIQUE/FK.
+  '''
+}
+
+// ----------------------------------------------------------------- ENUM-типы
+Enum pbx_type {
+  city
+  departmental
+  institutional
+}
+Enum line_type {
+  main
+  parallel
+  paired
+}
+Enum intercity_status {
+  none
+  open
+  closed
+}
+Enum number_status {
+  free
+  reserved
+  active
+  blocked
+}
+Enum gender {
+  male
+  female
+}
+Enum subscriber_category {
+  regular
+  privileged
+}
+Enum privilege_kind {
+  pensioner
+  disabled
+  veteran
+  other
+}
+Enum subscriber_status {
+  active
+  intercity_blocked
+  disconnected
+}
+Enum call_type {
+  local
+  internal
+  external
+  intercity
+}
+Enum invoice_kind {
+  subscription
+  intercity
+}
+Enum invoice_status {
+  pending
+  paid
+  overdue
+  cancelled
+}
+Enum notification_kind {
+  subscription_debt
+  intercity_debt
+}
+Enum queue_type {
+  regular
+  privileged
+}
+Enum queue_status {
+  waiting
+  feasible
+  installed
+  rejected
+}
+Enum public_phone_kind {
+  public
+  payphone
+}
+
+// ========================================================= Геолокация и АТС
+Table city {
+  id bigint [pk, increment]
+  name text [not null, unique]
+  is_home boolean [not null, default: false, note: 'Свой город (ровно один, частичный UNIQUE)']
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table address {
+  id bigint [pk, increment]
+  postal_index text [not null]
+  district text [not null]
+  street text [not null]
+  house text [not null]
+  apartment text
+  indexes {
+    (postal_index, district, street, house, apartment) [unique]
+    district
+    (district, street, house)
+  }
+}
+
+Table pbx {
+  id bigint [pk, increment]
+  name text [not null, unique]
+  code text [not null, unique, note: 'Код/префикс АТС']
+  pbx_type pbx_type [not null]
+  district text [not null]
+  address_id bigint [note: 'ON DELETE SET NULL']
+  capacity_numbers integer [not null, note: 'CHECK >= 0']
+  total_channels integer [not null, note: 'CHECK >= 0']
+  free_channels integer [not null, note: 'CHECK >= 0 и <= total_channels']
+  has_free_cable boolean [not null, default: true]
+  created_at timestamptz [not null, default: `now()`]
+  indexes {
+    pbx_type
+    district
+  }
+  Note: 'Базовая АТС. Триггер trg_pbx_subtype_check сверяет pbx_type с таблицей-подтипом.'
+}
+
+// Class-table inheritance: подтипы 1:1 с pbx
+Table pbx_city {
+  pbx_id bigint [pk, note: 'ON DELETE CASCADE']
+  intercity_enabled boolean [not null, default: true]
+  region_code text
+  Note: 'Городская АТС — имеет выход на межгород.'
+}
+
+Table pbx_department {
+  pbx_id bigint [pk]
+  department_name text [not null]
+  closed_network boolean [not null, default: true]
+  Note: 'Ведомственная АТС — замкнутая внутренняя сеть.'
+}
+
+Table pbx_institution {
+  pbx_id bigint [pk]
+  institution_name text [not null]
+  parent_department text
+  closed_network boolean [not null, default: true]
+  Note: 'Учрежденческая АТС — замкнутая внутренняя сеть.'
+}
+
+// ===================================================== Номера и абоненты
+Table phone_number {
+  id bigint [pk, increment]
+  number text [not null, unique]
+  pbx_id bigint [not null, note: 'ON DELETE RESTRICT']
+  line_type line_type [not null, default: 'main']
+  intercity intercity_status [not null, default: 'none', note: 'open/closed только у городских АТС (триггер)']
+  status number_status [not null, default: 'free', note: 'free/active синхронизируется триггером']
+  address_id bigint [note: 'Адрес установки; ON DELETE RESTRICT']
+  created_at timestamptz [not null, default: `now()`]
+  indexes {
+    pbx_id
+    status
+    address_id
+    line_type
+    intercity
+  }
+}
+
+Table subscriber {
+  id bigint [pk, increment]
+  last_name text [not null]
+  first_name text [not null]
+  middle_name text
+  gender gender [not null]
+  birth_date date [not null, note: 'CHECK 1900-01-01 < birth_date < CURRENT_DATE']
+  category subscriber_category [not null, default: 'regular']
+  privilege privilege_kind [note: 'NOT NULL только у льготников (CHECK chk_privilege)']
+  status subscriber_status [not null, default: 'active']
+  phone_number_id bigint [not null, note: 'много абонентов -> один номер; ON DELETE RESTRICT']
+  address_id bigint [not null, note: 'ON DELETE RESTRICT']
+  connected_at date [not null, default: `CURRENT_DATE`]
+  disconnected_at date
+  created_at timestamptz [not null, default: `now()`]
+  indexes {
+    phone_number_id
+    category
+    status
+    last_name
+    address_id
+    birth_date
+  }
+  Note: '''
+    Триггеры:
+    - trg_subscriber_count_check: main<=1, paired<=2, parallel — много абонентов;
+    - trg_subscriber_same_house_check: параллельные/спаренные — в одном доме.
+  '''
+}
+
+// =============================================================== Звонки (CDR)
+Table call_record {
+  id bigint [pk, increment]
+  from_number_id bigint [not null, note: 'ON DELETE CASCADE']
+  call_type call_type [not null]
+  dest_city_id bigint [note: 'Для межгорода; ON DELETE SET NULL']
+  dest_number_id bigint [note: 'Для местных/внутренних; ON DELETE SET NULL']
+  started_at timestamptz [not null]
+  duration_sec integer [not null, note: 'CHECK >= 0']
+  cost "numeric(12,2)" [not null, default: 0, note: 'CHECK >= 0']
+  indexes {
+    from_number_id
+    call_type
+    started_at
+    dest_city_id
+  }
+  Note: 'CHECK chk_intercity_city: межгород обязан ссылаться на город.'
+}
+
+// =================================================================== Биллинг
+Table tariff {
+  id bigint [pk, increment]
+  line_type line_type [not null]
+  with_intercity boolean [not null]
+  monthly_fee "numeric(12,2)" [not null, note: 'CHECK >= 0']
+  valid_from date [not null, default: `CURRENT_DATE`]
+  indexes {
+    (line_type, with_intercity, valid_from) [unique]
+  }
+  Note: 'Абонплата по (тип линии × наличие межгорода). Льготникам — скидка 50%.'
+}
+
+Table billing_settings {
+  id smallint [pk, default: 1, note: 'CHECK id = 1 (одна строка)']
+  privilege_discount "numeric(4,3)" [not null, default: 0.5]
+  reconnection_fee "numeric(12,2)" [not null, default: 150]
+  penalty_daily_rate "numeric(6,5)" [not null, default: 0.001]
+  payment_due_day smallint [not null, default: 20, note: 'Оплата до 20-го числа']
+  notice_grace_days smallint [not null, default: 2]
+}
+
+Table invoice {
+  id bigint [pk, increment]
+  subscriber_id bigint [not null, note: 'ON DELETE CASCADE']
+  kind invoice_kind [not null]
+  period_year smallint [not null]
+  period_month smallint [not null, note: 'CHECK 1..12']
+  amount "numeric(12,2)" [not null, note: 'CHECK >= 0']
+  due_date date [not null]
+  status invoice_status [not null, default: 'pending']
+  created_at timestamptz [not null, default: `now()`]
+  indexes {
+    (subscriber_id, kind, period_year, period_month) [unique]
+    subscriber_id
+    status
+    due_date
+    kind
+  }
+}
+
+Table payment {
+  id bigint [pk, increment]
+  subscriber_id bigint [not null, note: 'ON DELETE CASCADE']
+  invoice_id bigint [note: 'ON DELETE SET NULL']
+  amount "numeric(12,2)" [not null, note: 'CHECK > 0']
+  paid_at timestamptz [not null, default: `now()`]
+}
+
+Table penalty {
+  id bigint [pk, increment]
+  subscriber_id bigint [not null, note: 'ON DELETE CASCADE']
+  invoice_id bigint [note: 'ON DELETE SET NULL']
+  amount "numeric(12,2)" [not null, note: 'CHECK >= 0']
+  reason text
+  accrued_at date [not null, default: `CURRENT_DATE`]
+  paid boolean [not null, default: false]
+}
+
+Table notification {
+  id bigint [pk, increment]
+  subscriber_id bigint [not null, note: 'ON DELETE CASCADE']
+  kind notification_kind [not null]
+  sent_at date [not null, default: `CURRENT_DATE`]
+  deadline date [not null, note: 'CHECK deadline >= sent_at']
+  resolved boolean [not null, default: false]
+  Note: 'Письменное уведомление о задолженности.'
+}
+
+// ==================================================== Очередь и таксофоны
+Table installation_queue {
+  id bigint [pk, increment]
+  applicant_last_name text [not null]
+  applicant_first_name text [not null]
+  applicant_middle_name text
+  queue_type queue_type [not null, default: 'regular']
+  address_id bigint [not null, note: 'ON DELETE RESTRICT']
+  desired_pbx_id bigint [note: 'ON DELETE SET NULL']
+  requested_at date [not null, default: `CURRENT_DATE`]
+  status queue_status [not null, default: 'waiting']
+  assigned_number_id bigint [note: 'ON DELETE SET NULL']
+  note text
+}
+
+Table public_phone {
+  id bigint [pk, increment]
+  kind public_phone_kind [not null]
+  pbx_id bigint [not null, note: 'ON DELETE RESTRICT']
+  address_id bigint [not null, note: 'ON DELETE RESTRICT']
+  phone_number_id bigint [note: 'ON DELETE SET NULL']
+  installed_at date [not null, default: `CURRENT_DATE`]
+  active boolean [not null, default: true]
+}
+
+// =============================================== Аутентификация и RBAC
+Table app_user {
+  id bigint [pk, increment]
+  username text [not null, unique]
+  password_hash text [not null, note: 'Argon2']
+  full_name text
+  is_superadmin boolean [not null, default: false, note: 'Обходит проверку прав']
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `now()`]
+  last_login_at timestamptz
+}
+
+Table role {
+  id bigint [pk, increment]
+  name text [not null, unique]
+  description text
+  is_system boolean [not null, default: false, note: 'Системные роли нельзя удалить']
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table permission {
+  id bigint [pk, increment]
+  code text [not null, unique, note: 'Формат entity:action, напр. subscriber:read']
+  description text
+}
+
+Table role_permission {
+  role_id bigint [not null]
+  permission_id bigint [not null]
+  indexes {
+    (role_id, permission_id) [pk]
+  }
+}
+
+Table user_role {
+  user_id bigint [not null]
+  role_id bigint [not null]
+  indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+// ============================================================ Связи (FK)
+Ref: pbx.address_id > address.id [delete: set null]
+
+Ref: pbx_city.pbx_id - pbx.id [delete: cascade]
+Ref: pbx_department.pbx_id - pbx.id [delete: cascade]
+Ref: pbx_institution.pbx_id - pbx.id [delete: cascade]
+
+Ref: phone_number.pbx_id > pbx.id [delete: restrict]
+Ref: phone_number.address_id > address.id [delete: restrict]
+
+Ref: subscriber.phone_number_id > phone_number.id [delete: restrict]
+Ref: subscriber.address_id > address.id [delete: restrict]
+
+Ref: call_record.from_number_id > phone_number.id [delete: cascade]
+Ref: call_record.dest_city_id > city.id [delete: set null]
+Ref: call_record.dest_number_id > phone_number.id [delete: set null]
+
+Ref: invoice.subscriber_id > subscriber.id [delete: cascade]
+Ref: payment.subscriber_id > subscriber.id [delete: cascade]
+Ref: payment.invoice_id > invoice.id [delete: set null]
+Ref: penalty.subscriber_id > subscriber.id [delete: cascade]
+Ref: penalty.invoice_id > invoice.id [delete: set null]
+Ref: notification.subscriber_id > subscriber.id [delete: cascade]
+
+Ref: installation_queue.address_id > address.id [delete: restrict]
+Ref: installation_queue.desired_pbx_id > pbx.id [delete: set null]
+Ref: installation_queue.assigned_number_id > phone_number.id [delete: set null]
+
+Ref: public_phone.pbx_id > pbx.id [delete: restrict]
+Ref: public_phone.address_id > address.id [delete: restrict]
+Ref: public_phone.phone_number_id > phone_number.id [delete: set null]
+
+Ref: role_permission.role_id > role.id [delete: cascade]
+Ref: role_permission.permission_id > permission.id [delete: cascade]
+Ref: user_role.user_id > app_user.id [delete: cascade]
+Ref: user_role.role_id > role.id [delete: cascade]
+
+// ============================================================ Группы
+TableGroup "Геолокация и АТС" {
+  city
+  address
+  pbx
+  pbx_city
+  pbx_department
+  pbx_institution
+}
+TableGroup "Номера и абоненты" {
+  phone_number
+  subscriber
+  call_record
+}
+TableGroup "Биллинг" {
+  tariff
+  billing_settings
+  invoice
+  payment
+  penalty
+  notification
+}
+TableGroup "Очередь и таксофоны" {
+  installation_queue
+  public_phone
+}
+TableGroup "Аутентификация и RBAC" {
+  app_user
+  role
+  permission
+  role_permission
+  user_role
+}
