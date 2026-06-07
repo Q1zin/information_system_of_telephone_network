@@ -34,6 +34,8 @@ docker-compose.yml
 Makefile
 docs/schema.md  -- модель данных и привязка к 13 запросам
 docs/api.md     -- HTTP API
+docs/schema.dbml-- ER-диаграмма (dbdiagram.io)
+docs/guide.pdf  -- учебный разбор «для защиты» (БД, запросы, CRUD, Rust, SeaORM)
 ```
 
 ## Быстрый старт (база данных)

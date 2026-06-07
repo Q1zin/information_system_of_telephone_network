@@ -9,7 +9,7 @@ Project gts {
   Note: '''
     Городская телефонная сеть: АТС (3 типа через наследование), абоненты, номера,
     адреса, биллинг, межгородние звонки (CDR), очередь установки, таксофоны,
-    а также аутентификация и настраиваемый RBAC.
+    операторы с настраиваемым RBAC и личный кабинет абонента (customer).
     Целостность вынесена на уровень БД: триггеры + CHECK/UNIQUE/FK.
   '''
 }
@@ -187,6 +187,7 @@ Table subscriber {
   address_id bigint [not null, note: 'ON DELETE RESTRICT']
   connected_at date [not null, default: `CURRENT_DATE`]
   disconnected_at date
+  customer_id bigint [note: 'Аккаунт личного кабинета; ON DELETE SET NULL']
   created_at timestamptz [not null, default: `now()`]
   indexes {
     phone_number_id
@@ -195,12 +196,29 @@ Table subscriber {
     last_name
     address_id
     birth_date
+    customer_id
   }
   Note: '''
     Триггеры:
     - trg_subscriber_count_check: main<=1, paired<=2, parallel — много абонентов;
     - trg_subscriber_same_house_check: параллельные/спаренные — в одном доме.
   '''
+}
+
+// Аккаунт абонента для личного кабинета (самообслуживание)
+Table customer {
+  id bigint [pk, increment]
+  login text [not null, unique]
+  password_hash text [not null, note: 'Argon2']
+  last_name text [not null]
+  first_name text [not null]
+  middle_name text
+  gender gender [not null]
+  birth_date date [not null, note: 'CHECK 1900-01-01 < birth_date < CURRENT_DATE']
+  category subscriber_category [not null, default: 'regular']
+  privilege privilege_kind [note: 'NOT NULL только у льготников (CHECK chk_customer_privilege)']
+  created_at timestamptz [not null, default: `now()`]
+  Note: 'Логин/пароль абонента. Привязан к subscriber и installation_queue.'
 }
 
 // =============================================================== Звонки (CDR)
@@ -303,7 +321,11 @@ Table installation_queue {
   requested_at date [not null, default: `CURRENT_DATE`]
   status queue_status [not null, default: 'waiting']
   assigned_number_id bigint [note: 'ON DELETE SET NULL']
+  customer_id bigint [note: 'Кто подал заявку из ЛК; ON DELETE SET NULL']
   note text
+  indexes {
+    customer_id
+  }
 }
 
 Table public_phone {
@@ -370,6 +392,7 @@ Ref: phone_number.address_id > address.id [delete: restrict]
 
 Ref: subscriber.phone_number_id > phone_number.id [delete: restrict]
 Ref: subscriber.address_id > address.id [delete: restrict]
+Ref: subscriber.customer_id > customer.id [delete: set null]
 
 Ref: call_record.from_number_id > phone_number.id [delete: cascade]
 Ref: call_record.dest_city_id > city.id [delete: set null]
@@ -385,6 +408,7 @@ Ref: notification.subscriber_id > subscriber.id [delete: cascade]
 Ref: installation_queue.address_id > address.id [delete: restrict]
 Ref: installation_queue.desired_pbx_id > pbx.id [delete: set null]
 Ref: installation_queue.assigned_number_id > phone_number.id [delete: set null]
+Ref: installation_queue.customer_id > customer.id [delete: set null]
 
 Ref: public_phone.pbx_id > pbx.id [delete: restrict]
 Ref: public_phone.address_id > address.id [delete: restrict]
@@ -407,6 +431,7 @@ TableGroup "Геолокация и АТС" {
 TableGroup "Номера и абоненты" {
   phone_number
   subscriber
+  customer
   call_record
 }
 TableGroup "Биллинг" {
