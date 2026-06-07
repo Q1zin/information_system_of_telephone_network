@@ -1,0 +1,35 @@
+# Infrastructure for the City Telephone Network (ГТС) information system.
+# `docker compose up -d db` is enough to get a database for development.
+# backend/frontend services are added once their Dockerfiles exist.
+services:
+  db:
+    image: postgres:18
+    container_name: gts_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gts}
+      POSTGRES_USER: ${POSTGRES_USER:-gts}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gts}
+    ports:
+      # host 5433 to avoid clashing with a local PostgreSQL on 5432
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      # postgres:18+ expects the mount at /var/lib/postgresql (not .../data)
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gts} -d ${POSTGRES_DB:-gts}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    container_name: gts_adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
