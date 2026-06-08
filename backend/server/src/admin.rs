@@ -103,7 +103,7 @@ async fn delete_role(
         .await?;
     match is_system {
         None => return Err(AppError::NotFound),
-        Some((true,)) => return Err(AppError::bad_request("system roles cannot be deleted")),
+        Some((true,)) => return Err(AppError::bad_request("Системные роли нельзя удалить")),
         Some((false,)) => {}
     }
     sqlx::query("DELETE FROM role WHERE id = $1")
@@ -176,7 +176,7 @@ async fn create_user(
 ) -> AppResult<Json<Value>> {
     user.require("user:create")?;
     if input.password.len() < 4 {
-        return Err(AppError::bad_request("password must be at least 4 characters"));
+        return Err(AppError::bad_request("Пароль должен быть не короче 4 символов"));
     }
     let hash = hash_password(&input.password)?;
     let mut tx = st.pool().begin().await?;
@@ -250,7 +250,7 @@ async fn delete_user(
 ) -> AppResult<Json<Value>> {
     user.require("user:delete")?;
     if id == user.id {
-        return Err(AppError::bad_request("you cannot delete your own account"));
+        return Err(AppError::bad_request("Нельзя удалить собственный аккаунт"));
     }
     let res = sqlx::query("DELETE FROM app_user WHERE id = $1")
         .bind(id)

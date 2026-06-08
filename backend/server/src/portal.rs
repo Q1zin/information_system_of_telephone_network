@@ -153,10 +153,10 @@ async fn login(
     .fetch_optional(st.pool())
     .await?;
     let Some((id, hash)) = row else {
-        return Err(AppError::Unauthorized);
+        return Err(AppError::InvalidCredentials);
     };
     if !verify_password(&input.password, &hash) {
-        return Err(AppError::Unauthorized);
+        return Err(AppError::InvalidCredentials);
     }
     session
         .insert(CUSTOMER_ID_KEY, id)

@@ -27,11 +27,11 @@ async fn run(
     let lower = trimmed.to_lowercase();
     if !(lower.starts_with("select") || lower.starts_with("with")) {
         return Err(AppError::bad_request(
-            "only a single SELECT/WITH query is allowed",
+            "Разрешён только запрос на чтение (SELECT/WITH)",
         ));
     }
     if trimmed.contains(';') {
-        return Err(AppError::bad_request("multiple statements are not allowed"));
+        return Err(AppError::bad_request("Нельзя выполнять несколько запросов сразу"));
     }
 
     let wrapped = format!(

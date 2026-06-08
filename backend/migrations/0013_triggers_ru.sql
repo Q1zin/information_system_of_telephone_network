@@ -1,5 +1,8 @@
--- 0008_triggers.sql
--- Integrity rules enforced at the database level (req. 1).
+-- 0013_triggers_ru.sql
+-- Replaces trigger functions with Russian, human-readable error messages.
+-- Idempotent (CREATE OR REPLACE only): safe to apply to an existing database
+-- without recreating tables or triggers. On a fresh database these definitions
+-- match 0008 and are simply re-applied.
 
 -- ---------------------------------------------------------------------------
 -- Human-readable Russian labels for enum values embedded in error messages.
@@ -42,16 +45,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER pbx_city_subtype        BEFORE INSERT OR UPDATE ON pbx_city
-    FOR EACH ROW EXECUTE FUNCTION trg_pbx_subtype_check();
-CREATE TRIGGER pbx_department_subtype  BEFORE INSERT OR UPDATE ON pbx_department
-    FOR EACH ROW EXECUTE FUNCTION trg_pbx_subtype_check();
-CREATE TRIGGER pbx_institution_subtype BEFORE INSERT OR UPDATE ON pbx_institution
-    FOR EACH ROW EXECUTE FUNCTION trg_pbx_subtype_check();
-
 -- ---------------------------------------------------------------------------
 -- T2. Intercity access is only valid for city PBX numbers.
---     Closed-network (departmental/institutional) numbers must be 'none'.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_number_intercity_check() RETURNS trigger AS $$
 DECLARE
@@ -71,12 +66,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER number_intercity_check BEFORE INSERT OR UPDATE ON phone_number
-    FOR EACH ROW EXECUTE FUNCTION trg_number_intercity_check();
-
 -- ---------------------------------------------------------------------------
--- T3. Number occupancy by line type:
---     main  -> at most 1 subscriber, paired -> at most 2, parallel -> many.
+-- T3. Number occupancy by line type.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_subscriber_count_check() RETURNS trigger AS $$
 DECLARE
@@ -100,13 +91,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER subscriber_count_check BEFORE INSERT OR UPDATE ON subscriber
-    FOR EACH ROW EXECUTE FUNCTION trg_subscriber_count_check();
-
 -- ---------------------------------------------------------------------------
--- T4. Parallel/paired subscribers of one number must live in the same house,
---     and every subscriber must match the number's installation house.
---     (req: "параллельные или спаренные телефоны обязательно в одном доме")
+-- T4. Co-subscribers of one number must live in the same house.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_subscriber_same_house_check() RETURNS trigger AS $$
 DECLARE
@@ -118,7 +104,6 @@ BEGIN
     SELECT line_type INTO lt FROM phone_number WHERE id = NEW.phone_number_id;
     SELECT * INTO my_addr FROM address WHERE id = NEW.address_id;
 
-    -- Compare with the number's installation address, if any.
     SELECT a.* INTO num_addr
         FROM phone_number p JOIN address a ON a.id = p.address_id
         WHERE p.id = NEW.phone_number_id;
@@ -131,7 +116,6 @@ BEGIN
         END IF;
     END IF;
 
-    -- All co-subscribers of a shared line must be in the same house.
     IF lt IN ('parallel', 'paired') THEN
         FOR other IN
             SELECT a.postal_index, a.district, a.street, a.house
@@ -149,43 +133,3 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-CREATE TRIGGER subscriber_same_house_check BEFORE INSERT OR UPDATE ON subscriber
-    FOR EACH ROW EXECUTE FUNCTION trg_subscriber_same_house_check();
-
--- ---------------------------------------------------------------------------
--- T5. Keep phone_number.status in sync with the number of attached subscribers
---     (blocked numbers stay blocked and are managed explicitly).
--- ---------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION sync_number_status(p_number_id BIGINT) RETURNS void AS $$
-DECLARE
-    cnt INTEGER;
-BEGIN
-    IF p_number_id IS NULL THEN
-        RETURN;
-    END IF;
-    SELECT count(*) INTO cnt FROM subscriber WHERE phone_number_id = p_number_id;
-    UPDATE phone_number
-       SET status = CASE
-            WHEN status = 'blocked' THEN 'blocked'::number_status
-            WHEN cnt > 0            THEN 'active'::number_status
-            ELSE 'free'::number_status
-       END
-     WHERE id = p_number_id;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION trg_number_status_sync() RETURNS trigger AS $$
-BEGIN
-    IF TG_OP IN ('INSERT', 'UPDATE') THEN
-        PERFORM sync_number_status(NEW.phone_number_id);
-    END IF;
-    IF TG_OP IN ('DELETE', 'UPDATE') THEN
-        PERFORM sync_number_status(OLD.phone_number_id);
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER number_status_sync AFTER INSERT OR UPDATE OR DELETE ON subscriber
-    FOR EACH ROW EXECUTE FUNCTION trg_number_status_sync();
