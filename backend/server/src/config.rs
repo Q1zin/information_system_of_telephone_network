@@ -1,8 +1,3 @@
-//! Application configuration (req. 5).
-//!
-//! Values are read from `config.toml` and can be overridden by environment
-//! variables prefixed with `GTS__` (e.g. `GTS__DATABASE__PASSWORD=secret`).
-
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -56,9 +51,7 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    /// Load configuration from `config.toml` + `GTS__*` environment overrides.
     pub fn load() -> anyhow::Result<Self> {
-        // .env is optional; used mainly for tooling (sqlx/sea-orm-cli).
         let _ = dotenvy::dotenv();
 
         let cfg = config::Config::builder()

@@ -7,7 +7,6 @@ const routes: RouteRecordRaw[] = [
   { path: '/staff/login', name: 'staff-login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
   { path: '/portal/login', name: 'portal-login', component: () => import('@/views/portal/PortalLoginView.vue'), meta: { public: true } },
 
-  // ---- operator / admin area ----
   {
     path: '/app',
     component: () => import('@/layouts/MainLayout.vue'),
@@ -25,7 +24,6 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
-  // ---- customer self-service portal ----
   {
     path: '/portal',
     component: () => import('@/layouts/PortalLayout.vue'),
@@ -45,7 +43,6 @@ const router = createRouter({ history: createWebHistory(), routes })
 router.beforeEach(async (to) => {
   if (to.meta.public) return true
 
-  // customer portal area
   if (to.meta.area === 'portal') {
     const c = useCustomerStore()
     if (!c.loaded) await c.fetchMe()
@@ -53,7 +50,6 @@ router.beforeEach(async (to) => {
     return true
   }
 
-  // operator / admin area
   const auth = useAuthStore()
   if (!auth.loaded) await auth.fetchMe()
   if (!auth.isAuthenticated) return { name: 'staff-login', query: { redirect: to.fullPath } }

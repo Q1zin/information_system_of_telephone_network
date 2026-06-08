@@ -14,7 +14,7 @@ async function logout() {
 <template>
   <div class="portal">
     <header class="topbar">
-      <div class="brand" @click="router.push('/portal')">📞 ГТС · Личный кабинет</div>
+      <div class="brand" @click="router.push('/portal')">ГТС · Личный кабинет</div>
       <div class="right">
         <span class="who">{{ customer.fullName }}</span>
         <el-button text type="primary" @click="logout">Выйти</el-button>

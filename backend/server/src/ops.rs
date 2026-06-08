@@ -1,6 +1,3 @@
-//! Operator business action: fulfil a connection application (заявка) by
-//! assigning a free number and creating the subscriber line.
-
 use axum::{
     extract::{Path, State},
     routing::{get, post},
@@ -8,7 +5,6 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
-
 use crate::{
     auth::CurrentUser,
     error::{AppError, AppResult},
@@ -82,7 +78,6 @@ async fn provision(
         .ok_or_else(|| AppError::bad_request("укажите АТС для подключения"))?;
     let line_type = input.line_type.unwrap_or_else(|| "main".into());
 
-    // pick a free number
     let free: Option<(i64,)> = sqlx::query_as(
         "SELECT id FROM phone_number WHERE pbx_id = $1 AND status = 'free' ORDER BY number LIMIT 1",
     )
@@ -97,7 +92,6 @@ async fn provision(
         .bind(pbx_id)
         .fetch_one(pool)
         .await?;
-    // city PBX → intercity available but off; closed networks → 'none'
     let intercity = if pbx_type == "city" { "closed" } else { "none" };
 
     let mut tx = pool.begin().await?;

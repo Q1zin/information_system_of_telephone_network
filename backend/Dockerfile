@@ -1,6 +1,5 @@
 # syntax=docker/dockerfile:1
 
-# ---- build ----
 FROM rust:1-bookworm AS builder
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
@@ -8,7 +7,6 @@ COPY entity ./entity
 COPY server ./server
 RUN cargo build --release -p server
 
-# ---- runtime ----
 FROM debian:bookworm-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \

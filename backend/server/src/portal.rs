@@ -1,9 +1,3 @@
-//! Customer self-service portal (личный кабинет абонента).
-//!
-//! Separate principal from operators: the session stores `customer_id`.
-//! Customers can register, apply for a connection, manage their line
-//! (intercity on/off), place (simulated) calls, and pay invoices.
-
 use axum::{
     extract::{FromRef, FromRequestParts, Path, State},
     http::request::Parts,
@@ -43,8 +37,6 @@ pub fn router() -> Router<AppState> {
         .route("/invoices", get(invoices))
         .route("/invoices/{id}/pay", post(pay_invoice))
 }
-
-// ---------------------------------------------------------------- principal
 
 #[derive(Clone, Debug, Serialize)]
 pub struct CurrentCustomer {
@@ -94,8 +86,6 @@ where
         load_customer(app.pool(), id).await?.ok_or(AppError::Unauthorized)
     }
 }
-
-// ------------------------------------------------------------------- auth
 
 #[derive(Deserialize)]
 struct RegisterInput {
@@ -187,8 +177,6 @@ async fn me(customer: CurrentCustomer) -> Json<CurrentCustomer> {
     Json(customer)
 }
 
-// --------------------------------------------------------------- overview
-
 async fn overview(customer: CurrentCustomer, State(st): State<AppState>) -> AppResult<Json<Value>> {
     let pool = st.pool();
     let (lines,): (Value,) = sqlx::query_as(&rows(
@@ -233,8 +221,6 @@ async fn overview(customer: CurrentCustomer, State(st): State<AppState>) -> AppR
     })))
 }
 
-// ------------------------------------------------------------ applications
-
 #[derive(Deserialize)]
 struct ApplyInput {
     postal_index: String,
@@ -263,7 +249,6 @@ async fn apply(
     .fetch_one(pool)
     .await?;
 
-    // privileged customers join the privileged queue
     let queue_type = if customer.category == "privileged" {
         "privileged"
     } else {
@@ -335,9 +320,6 @@ async fn tariffs(_c: CurrentCustomer, State(st): State<AppState>) -> AppResult<J
     Ok(Json(v))
 }
 
-// -------------------------------------------------------------- line ops
-
-/// Verify the number belongs to the customer; returns the subscriber id.
 async fn owned_subscriber(pool: &sqlx::PgPool, customer_id: i64, number_id: i64) -> AppResult<i64> {
     let row: Option<(i64,)> = sqlx::query_as(
         "SELECT s.id FROM subscriber s WHERE s.customer_id = $1 AND s.phone_number_id = $2",
@@ -414,7 +396,6 @@ async fn make_call(
         let city_id = input
             .dest_city_id
             .ok_or_else(|| AppError::bad_request("укажите город назначения"))?;
-        // 5.00 per started minute
         let minutes = (duration as f64 / 60.0).ceil();
         let cost = rust_decimal::Decimal::try_from(minutes * 5.0).unwrap_or_default();
 
@@ -429,7 +410,6 @@ async fn make_call(
         .fetch_one(pool)
         .await?;
 
-        // accumulate this month's intercity invoice
         sqlx::query(
             "INSERT INTO invoice (subscriber_id, kind, period_year, period_month, amount, due_date, status) \
              SELECT $1, 'intercity', \
@@ -446,7 +426,6 @@ async fn make_call(
         return Ok(Json(json!({ "call_id": call_id, "type": "intercity", "cost": cost })));
     }
 
-    // local / internal call
     let dest = input
         .dest_number
         .ok_or_else(|| AppError::bad_request("укажите номер вызываемого абонента"))?;
@@ -488,8 +467,6 @@ async fn call_history(
     .await?;
     Ok(Json(v))
 }
-
-// --------------------------------------------------------------- billing
 
 async fn invoices(customer: CurrentCustomer, State(st): State<AppState>) -> AppResult<Json<Value>> {
     let (v,): (Value,) = sqlx::query_as(&rows(
@@ -539,7 +516,7 @@ async fn pay_invoice(
         .bind(id)
         .execute(&mut *tx)
         .await?;
-    // resolve related written notices of the same kind
+
     let notice_kind = if kind == "intercity" {
         "intercity_debt"
     } else {

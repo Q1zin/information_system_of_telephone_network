@@ -21,7 +21,7 @@ async function logout() {
 <template>
   <el-container style="height: 100%">
     <el-aside width="240px" class="aside">
-      <div class="brand">📞 ГТС</div>
+      <div class="brand">ГТС</div>
       <el-menu :default-active="route.path" router unique-opened>
         <el-menu-item index="/app/dashboard">
           <el-icon><DataLine /></el-icon><span>Главная</span>

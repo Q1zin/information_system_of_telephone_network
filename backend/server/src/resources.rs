@@ -1,7 +1,4 @@
-//! Wires every SeaORM entity into the generic CRUD layer with its permission name.
-
 use axum::Router;
-
 use crate::{crud::crud_routes, crud::Resource, state::AppState};
 
 macro_rules! resource {
@@ -29,7 +26,6 @@ resource!(notification, "notification");
 resource!(installation_queue, "queue");
 resource!(public_phone, "public_phone");
 
-/// Mount all CRUD resources under their REST paths.
 pub fn api_router() -> Router<AppState> {
     Router::new()
         .nest("/pbx", crud_routes::<entity::pbx::Entity>())

@@ -1,9 +1,3 @@
-//! Unified application error type with an Axum `IntoResponse` mapping.
-//!
-//! Database-level integrity violations (triggers, CHECK/UNIQUE/FK constraints)
-//! are translated into meaningful HTTP statuses + messages so the UI can show
-//! them to the user instead of an opaque 500.
-
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -59,7 +53,6 @@ impl IntoResponse for AppError {
 }
 
 fn map_db_err(e: &sea_orm::DbErr) -> (StatusCode, String) {
-    // SeaORM wraps the underlying sqlx error; reach for the Postgres error.
     if let sea_orm::DbErr::RecordNotFound(_) = e {
         return (StatusCode::NOT_FOUND, "resource not found".into());
     }

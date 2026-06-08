@@ -1,5 +1,3 @@
-//! First-run bootstrap of the superadmin account.
-
 use crate::{auth::password::hash_password, config::AuthConfig};
 
 pub async fn ensure_superadmin(pool: &sqlx::PgPool, cfg: &AuthConfig) -> anyhow::Result<()> {
@@ -22,7 +20,6 @@ pub async fn ensure_superadmin(pool: &sqlx::PgPool, cfg: &AuthConfig) -> anyhow:
     .fetch_one(pool)
     .await?;
 
-    // Attach the seeded 'superadmin' role, if present.
     sqlx::query(
         "INSERT INTO user_role (user_id, role_id) \
          SELECT $1, id FROM role WHERE name = 'superadmin' ON CONFLICT DO NOTHING",

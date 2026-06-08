@@ -1,10 +1,3 @@
-//! Centralised OpenAPI specification for the whole backend.
-//!
-//! Because the CRUD layer is generic (one handler set for every resource) and
-//! several endpoints return dynamic JSON, the spec is described here with
-//! documentation-only stub functions rather than scattering `#[utoipa::path]`
-//! over generic handlers. The stubs are never routed — only their metadata is
-//! used to build the document served at `/api-docs/openapi.json`.
 #![allow(dead_code)]
 
 use serde_json::Value;
@@ -12,8 +5,6 @@ use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
     Modify, OpenApi, ToSchema,
 };
-
-// --------------------------------------------------------------------- schemas
 
 #[derive(ToSchema)]
 struct LoginRequest {
@@ -29,7 +20,6 @@ struct UserResponse {
     username: String,
     full_name: Option<String>,
     is_superadmin: bool,
-    /// Effective permission codes (entity:action).
     permissions: Vec<String>,
 }
 
@@ -43,7 +33,6 @@ struct StatusResponse {
     status: String,
 }
 
-/// Paginated CRUD list response. `items` holds entity objects.
 #[derive(ToSchema)]
 struct CrudPage {
     items: Vec<Value>,
@@ -128,7 +117,6 @@ struct IntercityInput {
 
 #[derive(ToSchema)]
 struct CallInput {
-    /// "local" | "intercity"
     kind: String,
     dest_number: Option<String>,
     dest_city_id: Option<i64>,
@@ -140,8 +128,6 @@ struct ProvisionInput {
     pbx_id: Option<i64>,
     line_type: Option<String>,
 }
-
-// ------------------------------------------------------------------ auth paths
 
 #[utoipa::path(
     post, path = "/api/auth/login", tag = "auth",
@@ -163,11 +149,6 @@ fn auth_logout() {}
         (status = 401, body = ErrorResponse),
     ))]
 fn auth_me() {}
-
-// ------------------------------------------------------------- generic CRUD
-// One contract for every resource. `{resource}` is one of: pbx, subscribers,
-// phone-numbers, addresses, cities, calls, tariffs, invoices, payments,
-// penalties, notifications, queue, public-phones.
 
 #[utoipa::path(
     get, path = "/api/{resource}", tag = "crud",
@@ -211,8 +192,6 @@ fn crud_update() {}
     responses((status = 200, body = Value), (status = 404, body = ErrorResponse))
 )]
 fn crud_delete() {}
-
-// ------------------------------------------------------------------- analytics
 
 macro_rules! analytics_path {
     ($fn:ident, $path:literal, $summary:literal $(, ($p:literal, $ty:ty, $desc:literal))*) => {
@@ -261,8 +240,6 @@ analytics_path!(a_q12, "/api/analytics/low-external-call-numbers", "Q12. Numbers
 analytics_path!(a_q13, "/api/analytics/action-needed-debtors", "Q13. Debtors needing action",
     ("pbx_id", i64, "PBX id"), ("district", String, "district"));
 
-// ------------------------------------------------------------------ raw query
-
 #[utoipa::path(
     post, path = "/api/raw-query", tag = "raw-query",
     request_body = RawQueryInput,
@@ -272,8 +249,6 @@ analytics_path!(a_q13, "/api/analytics/action-needed-debtors", "Q13. Debtors nee
     )
 )]
 fn raw_query_run() {}
-
-// ----------------------------------------------------------------------- admin
 
 #[utoipa::path(get, path = "/api/admin/permissions", tag = "admin",
     responses((status = 200, body = Vec<Value>)))]
@@ -325,8 +300,6 @@ fn admin_delete_user() {}
     responses((status = 200, body = Value)))]
 fn admin_set_user_roles() {}
 
-// ----------------------------------------------- customer portal (личный кабинет)
-
 #[utoipa::path(post, path = "/api/portal/register", tag = "portal",
     request_body = CustomerRegister, responses((status = 200, body = Value)))]
 fn portal_register() {}
@@ -373,8 +346,6 @@ fn portal_invoices() {}
     params(("id" = i64, Path)), responses((status = 200, body = Value)))]
 fn portal_pay() {}
 
-// ----------------------------------------------- operator actions
-
 #[utoipa::path(get, path = "/api/ops/applications", tag = "ops",
     summary = "Заявки на подключение (для оператора)", responses((status = 200, body = Vec<Value>)))]
 fn ops_applications() {}
@@ -383,8 +354,6 @@ fn ops_applications() {}
     summary = "Подключить заявку: выдать номер, создать абонента",
     params(("id" = i64, Path)), request_body = ProvisionInput, responses((status = 200, body = Value)))]
 fn ops_provision() {}
-
-// ------------------------------------------------------------- security + doc
 
 struct SecurityAddon;
 

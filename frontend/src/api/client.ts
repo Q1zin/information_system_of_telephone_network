@@ -1,9 +1,7 @@
 import axios, { AxiosError } from 'axios'
 
-// Same-origin in dev thanks to the Vite proxy; cookies carry the session.
 const api = axios.create({ baseURL: '/api', withCredentials: true })
 
-// Normalise backend `{ "error": "..." }` payloads into Error.message.
 api.interceptors.response.use(
   (r) => r,
   (error: AxiosError<{ error?: string }>) => {

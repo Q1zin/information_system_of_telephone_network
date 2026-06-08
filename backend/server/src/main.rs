@@ -14,7 +14,6 @@ mod settings;
 mod state;
 
 use std::sync::Arc;
-
 use axum::{
     http::{header, HeaderValue, Method},
     routing::get,
@@ -26,7 +25,6 @@ use tower_sessions::{Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::PostgresStore;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-
 use crate::{config::AppConfig, state::AppState};
 
 #[tokio::main]
@@ -42,14 +40,12 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("connecting to database at {}", config.database.host);
     let db = db::connect(&config.database).await?;
 
-    // Session store on the same Postgres database.
     let session_store = PostgresStore::new(db.get_postgres_connection_pool().clone());
     session_store.migrate().await?;
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
         .with_expiry(Expiry::OnInactivity(time::Duration::days(7)));
 
-    // Create the bootstrap superadmin if needed.
     auth::bootstrap::ensure_superadmin(db.get_postgres_connection_pool(), &config.auth).await?;
 
     let bind_addr = config.server.bind_addr();
@@ -58,7 +54,6 @@ async fn main() -> anyhow::Result<()> {
         config: Arc::new(config),
     };
 
-    // CORS for the Vue dev server (credentials require an explicit origin).
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
         .allow_methods([

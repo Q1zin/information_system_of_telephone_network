@@ -1,9 +1,5 @@
-//! Shared application state injected into every handler.
-
 use std::sync::Arc;
-
 use sea_orm::DatabaseConnection;
-
 use crate::config::AppConfig;
 
 #[derive(Clone)]
@@ -13,7 +9,6 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Underlying sqlx pool, used for raw SQL (analytics + user queries).
     pub fn pool(&self) -> &sqlx::PgPool {
         self.db.get_postgres_connection_pool()
     }

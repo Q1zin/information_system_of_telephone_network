@@ -1,13 +1,6 @@
-//! User-provided raw SQL execution (req. 6).
-//!
-//! Safety: requires the `raw_query:run` permission, allows a single SELECT/WITH
-//! statement only, and runs it inside a READ ONLY transaction with a statement
-//! timeout. PostgreSQL renders the rows to JSON.
-
 use axum::{extract::State, routing::post, Json, Router};
 use serde::Deserialize;
 use serde_json::Value;
-
 use crate::{
     auth::CurrentUser,
     error::{AppError, AppResult},

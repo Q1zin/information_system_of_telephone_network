@@ -1,12 +1,8 @@
-//! Current authenticated user + permission set, loaded from the session.
-
 use std::collections::HashSet;
-
 use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;
 use serde::Serialize;
 use tower_sessions::Session;
-
 use crate::{
     error::{AppError, AppResult},
     state::AppState,
@@ -24,7 +20,6 @@ pub struct CurrentUser {
 }
 
 impl CurrentUser {
-    /// Superadmin implicitly has every permission.
     pub fn has(&self, perm: &str) -> bool {
         self.is_superadmin || self.permissions.contains(perm)
     }
@@ -38,7 +33,6 @@ impl CurrentUser {
     }
 }
 
-/// Load a user and their effective permissions (via roles) from the database.
 pub async fn load_current_user(
     pool: &sqlx::PgPool,
     user_id: i64,

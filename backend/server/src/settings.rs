@@ -1,9 +1,6 @@
-//! Billing settings — a singleton config row (id = 1). Exposed as read + update.
-
 use axum::{extract::State, routing::get, Json, Router};
 use serde::Deserialize;
 use serde_json::Value;
-
 use crate::{auth::CurrentUser, error::AppResult, state::AppState};
 
 pub fn router() -> Router<AppState> {

@@ -1,9 +1,3 @@
-//! Generic, reusable CRUD layer over any SeaORM entity (req. 4).
-//!
-//! A single set of generic handlers + `crud_routes::<Entity>()` provides
-//! paginated list / get / create / update / delete for every resource, with
-//! per-resource permission checks (`<name>:read|create|update|delete`).
-
 use axum::{
     extract::{Path, Query, State},
     routing::get,
@@ -15,14 +9,12 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
 use crate::{
     auth::CurrentUser,
     error::{AppError, AppResult},
     state::AppState,
 };
 
-/// Associates a SeaORM entity with its permission resource name.
 pub trait Resource: EntityTrait {
     const NAME: &'static str;
 }
@@ -50,7 +42,6 @@ pub struct Page<T> {
     pub total_pages: u64,
 }
 
-/// Build a `Router` exposing the 5 CRUD endpoints for an entity.
 pub fn crud_routes<E>() -> Router<AppState>
 where
     E: Resource + 'static,
@@ -127,8 +118,7 @@ where
     user.require(&format!("{}:create", E::NAME))?;
     let mut am = <E::ActiveModel as std::default::Default>::default();
     am.set_from_json(payload.clone())?;
-    // `set_from_json` never writes primary keys. For non-auto-increment PKs the
-    // client supplies the value (e.g. the PBX subtype `pbx_id`).
+    
     if !E::PrimaryKey::auto_increment() {
         for pk in E::PrimaryKey::iter() {
             let col = pk.into_column();

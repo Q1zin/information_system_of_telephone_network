@@ -118,7 +118,7 @@ onMounted(load)
           <el-form-item label="Длительность, сек">
             <el-input-number v-model="call.duration_sec" :min="1" :max="36000" :controls="false" style="width: 100%" />
           </el-form-item>
-          <el-button type="primary" :loading="busy" @click="placeCall">📞 Позвонить</el-button>
+          <el-button type="primary" :loading="busy" @click="placeCall">Позвонить</el-button>
         </el-form>
       </el-card>
     </div>

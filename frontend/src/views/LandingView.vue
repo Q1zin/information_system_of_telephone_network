@@ -6,20 +6,17 @@ const router = useRouter()
 <template>
   <div class="landing">
     <div class="hero">
-      <div class="logo">📞</div>
       <h1>Городская телефонная сеть</h1>
       <p class="subtitle">Подключение, управление линией, междугородняя связь и оплата — онлайн</p>
 
       <div class="cards">
         <el-card class="choice" shadow="hover" @click="router.push('/portal')">
-          <div class="emoji">👤</div>
           <h3>Личный кабинет абонента</h3>
           <p>Подать заявку на подключение, управлять тарифом, звонить и оплачивать счета.</p>
           <el-button type="primary" round>Войти / Регистрация</el-button>
         </el-card>
 
         <el-card class="choice" shadow="hover" @click="router.push('/staff/login')">
-          <div class="emoji">🛠️</div>
           <h3>Вход для сотрудников</h3>
           <p>Операторская панель: справочники, аналитика, заявки, администрирование.</p>
           <el-button round>Войти</el-button>
@@ -41,9 +38,6 @@ const router = useRouter()
 .hero {
   text-align: center;
   max-width: 860px;
-}
-.logo {
-  font-size: 56px;
 }
 h1 {
   margin: 8px 0 4px;
@@ -67,9 +61,6 @@ h1 {
 }
 .choice:hover {
   transform: translateY(-4px);
-}
-.choice .emoji {
-  font-size: 40px;
 }
 .choice h3 {
   margin: 8px 0;

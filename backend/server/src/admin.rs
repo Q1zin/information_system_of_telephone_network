@@ -1,6 +1,3 @@
-//! Admin / RBAC management endpoints (req. 7). Roles and permissions are stored
-//! in the database, so a superadmin can reconfigure access without code changes.
-
 use axum::{
     extract::{Path, State},
     routing::{get, post},
@@ -8,7 +5,6 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
-
 use crate::{
     auth::{password::hash_password, CurrentUser},
     error::{AppError, AppResult},
@@ -30,8 +26,6 @@ pub fn router() -> Router<AppState> {
         .route("/users/{id}/roles", post(set_user_roles))
 }
 
-// ---------------------------------------------------------------- permissions
-
 async fn list_permissions(user: CurrentUser, State(st): State<AppState>) -> AppResult<Json<Value>> {
     user.require("role:read")?;
     let (v,): (Value,) =
@@ -40,8 +34,6 @@ async fn list_permissions(user: CurrentUser, State(st): State<AppState>) -> AppR
             .await?;
     Ok(Json(v))
 }
-
-// ----------------------------------------------------------------------- roles
 
 async fn list_roles(user: CurrentUser, State(st): State<AppState>) -> AppResult<Json<Value>> {
     user.require("role:read")?;
@@ -149,8 +141,6 @@ async fn set_role_permissions(
     tx.commit().await?;
     Ok(Json(json!({ "role_id": id, "permissions": input.permission_ids.len() })))
 }
-
-// ----------------------------------------------------------------------- users
 
 async fn list_users(user: CurrentUser, State(st): State<AppState>) -> AppResult<Json<Value>> {
     user.require("user:read")?;

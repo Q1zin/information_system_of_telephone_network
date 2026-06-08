@@ -1,5 +1,3 @@
-//! Authentication endpoints: login / logout / me.
-
 use axum::{
     extract::State,
     routing::{get, post},
@@ -8,7 +6,6 @@ use axum::{
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tower_sessions::Session;
-
 use crate::{
     auth::{
         password::verify_password,

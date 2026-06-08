@@ -1,6 +1,3 @@
-//! Variant analytical queries (req. 2). Each endpoint builds parameterised SQL
-//! and lets PostgreSQL render the result set as JSON via `json_agg`.
-
 use axum::{
     extract::{Query, State},
     routing::get,
@@ -8,7 +5,6 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::Value;
-
 use crate::{auth::CurrentUser, error::AppResult, state::AppState};
 
 const PERM: &str = "analytics:read";
@@ -34,7 +30,7 @@ pub fn router() -> Router<AppState> {
         .route("/action-needed-debtors", get(q13_action_needed))
 }
 
-/// Q1. Subscribers of a PBX (all / privileged / by age / by surname prefix).
+/// Q1. Получить перечень и общее число абонентов указанной АТС полностью, только льготников, по возрастному признаку, по группе фамилий.
 #[derive(Deserialize)]
 struct Q1 {
     pbx_id: Option<i64>,
@@ -70,7 +66,7 @@ async fn q1_subscribers(
     Ok(Json(v))
 }
 
-/// Q2. Free numbers (by PBX / whole network / by district).
+/// Q2. Получить перечень и общее число свободных телефонных номеров на указанной АТС, по всей ГТС, по признаку возможности установки телефона в данном районе.
 #[derive(Deserialize)]
 struct Q2 {
     pbx_id: Option<i64>,
@@ -100,7 +96,7 @@ async fn q2_free_numbers(
     Ok(Json(v))
 }
 
-/// Q3. Debtors (by PBX / district / overdue days / debt kind / amount).
+/// Q3. Получить перечень и общее число должников на указанной АТС, по всей ГТС, по данному району, абонентов, которые имеют задолженность уже больше недели (месяца), по признаку задолженности за межгород и (или) по абонентской плате, по размеру долга.
 #[derive(Deserialize)]
 struct Q3 {
     pbx_id: Option<i64>,
@@ -143,7 +139,7 @@ async fn q3_debtors(
     Ok(Json(v))
 }
 
-/// Q4. PBX ranking by number of debtors / total debt (optionally by type).
+/// Q4. Определить АТС (любого или конкретного типа), на которой самое большое (маленькое) число должников, самая большая сумма задолженности.
 #[derive(Deserialize)]
 struct Q4 {
     pbx_type: Option<String>,
@@ -174,40 +170,7 @@ async fn q4_pbx_ranking(
     Ok(Json(v))
 }
 
-/// Q9. City with the most intercity calls.
-async fn q9_top_city(user: CurrentUser, State(st): State<AppState>) -> AppResult<Json<Value>> {
-    user.require(PERM)?;
-    let sql = wrap(
-        "SELECT c.name AS city, count(*) AS calls \
-         FROM call_record cr JOIN city c ON c.id = cr.dest_city_id \
-         WHERE cr.call_type = 'intercity' \
-         GROUP BY c.name ORDER BY calls DESC",
-    );
-    let (v,): (Value,) = sqlx::query_as(&sql).fetch_one(st.pool()).await?;
-    Ok(Json(v))
-}
-
-/// Q10. Full information about subscribers with a given phone number.
-#[derive(Deserialize)]
-struct Q10 {
-    number: String,
-}
-
-async fn q10_by_number(
-    user: CurrentUser,
-    State(st): State<AppState>,
-    Query(p): Query<Q10>,
-) -> AppResult<Json<Value>> {
-    user.require(PERM)?;
-    let sql = wrap("SELECT * FROM v_subscriber_full WHERE number = $1");
-    let (v,): (Value,) = sqlx::query_as(&sql)
-        .bind(p.number)
-        .fetch_one(st.pool())
-        .await?;
-    Ok(Json(v))
-}
-
-/// Q5. Public phones and payphones (whole city / by PBX / by district / by kind).
+/// Q5. Получить перечень и общее число общественных телефонов и таксофонов во всем городе, принадлежащих указанной АТС, по признаку нахожения в данном районе.
 #[derive(Deserialize)]
 struct Q5 {
     pbx_id: Option<i64>,
@@ -241,7 +204,7 @@ async fn q5_public_phones(
     Ok(Json(v))
 }
 
-/// Q6. Ratio of regular vs privileged subscribers (PBX / network / district / PBX type).
+/// Q6. Найти процентное соотношение обычных и льготных абонентов на указанной АТС, по всей ГТС, по данному району, по типам АТС.
 #[derive(Deserialize)]
 struct Q6 {
     pbx_id: Option<i64>,
@@ -275,7 +238,7 @@ async fn q6_category_ratio(
     Ok(Json(v))
 }
 
-/// Q7. Subscribers with parallel phones (PBX / network / district / type; privileged only).
+/// Q7. Получить перечень и общее число абонентов указанной АТС, по всей ГТС, по данному району, по типам АТС имеющих параллельные телефоны, только льготников имеющих параллельные телефоны.
 #[derive(Deserialize)]
 struct Q7 {
     pbx_id: Option<i64>,
@@ -309,7 +272,7 @@ async fn q7_parallel(
     Ok(Json(v))
 }
 
-/// Q8. Phones by address: counts per house / street, including intercity-capable ones.
+/// Q8. Определить, есть ли по данному адресу телефон, общее количество телефонов и (или) количество телефонов с выходом на межгород, с открытым выходом на межгород в данном доме, на конкретной улице.
 #[derive(Deserialize)]
 struct Q8 {
     district: Option<String>,
@@ -344,7 +307,40 @@ async fn q8_phones_by_address(
     Ok(Json(v))
 }
 
-/// Q11. Paired phones that can be split into separate numbers (free number + channel).
+/// Q9. Определить город, с которым происходит большее количество междугородных переговоров.
+async fn q9_top_city(user: CurrentUser, State(st): State<AppState>) -> AppResult<Json<Value>> {
+    user.require(PERM)?;
+    let sql = wrap(
+        "SELECT c.name AS city, count(*) AS calls \
+         FROM call_record cr JOIN city c ON c.id = cr.dest_city_id \
+         WHERE cr.call_type = 'intercity' \
+         GROUP BY c.name ORDER BY calls DESC",
+    );
+    let (v,): (Value,) = sqlx::query_as(&sql).fetch_one(st.pool()).await?;
+    Ok(Json(v))
+}
+
+/// Q10. Получить полную информацию об абонентах с заданным телефонным номером.
+#[derive(Deserialize)]
+struct Q10 {
+    number: String,
+}
+
+async fn q10_by_number(
+    user: CurrentUser,
+    State(st): State<AppState>,
+    Query(p): Query<Q10>,
+) -> AppResult<Json<Value>> {
+    user.require(PERM)?;
+    let sql = wrap("SELECT * FROM v_subscriber_full WHERE number = $1");
+    let (v,): (Value,) = sqlx::query_as(&sql)
+        .bind(p.number)
+        .fetch_one(st.pool())
+        .await?;
+    Ok(Json(v))
+}
+
+/// Q11. Получить перечень спаренных телефонов, для которых есть техническая возможность заменить их на обычные (выделить дополнительный номер).
 #[derive(Deserialize)]
 struct Q11 {
     pbx_id: Option<i64>,
@@ -374,7 +370,7 @@ async fn q11_splittable(
     Ok(Json(v))
 }
 
-/// Q12. Internal numbers of closed-network PBXs with fewer than N external calls in a period.
+/// Q12. Получить перечень и общее число внутренних на определенной ведомственной или учрежденческой АТС, с которых за некоторый период времени было произведено менее определенного числа внешних звонков.
 #[derive(Deserialize)]
 struct Q12 {
     pbx_id: Option<i64>,
@@ -412,7 +408,7 @@ async fn q12_low_external(
     Ok(Json(v))
 }
 
-/// Q13. Debtors who should be notified / disconnected / have intercity blocked.
+/// Q13. Получить перечень и общее число должников на указанной АТС, по всей ГТС, по данному району, которым следует послать письменное уведомление, отключить телефон и(или) выход на межгород.
 #[derive(Deserialize)]
 struct Q13 {
     pbx_id: Option<i64>,
