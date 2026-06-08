@@ -56,7 +56,7 @@ async function logout() {
       <el-header class="header">
         <div />
         <div class="user">
-          <el-tag v-if="auth.user?.is_superadmin" type="danger" size="small">superadmin</el-tag>
+          <el-tag v-if="auth.user?.is_superadmin" type="danger" size="small">Суперадмин</el-tag>
           <span>{{ auth.user?.full_name || auth.user?.username }}</span>
           <el-button text type="primary" @click="logout">Выйти</el-button>
         </div>

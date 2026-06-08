@@ -2,7 +2,44 @@
 -- Reference data the application depends on: permissions catalog, system roles,
 -- billing settings and tariffs. (Demo/business data lives in backend/seeds/.)
 
+-- Russian labels for permission actions/entities, used to build descriptions.
+CREATE OR REPLACE FUNCTION perm_action_ru(act TEXT) RETURNS text AS $$
+    SELECT CASE act
+        WHEN 'read'   THEN 'Просмотр'
+        WHEN 'create' THEN 'Создание'
+        WHEN 'update' THEN 'Изменение'
+        WHEN 'delete' THEN 'Удаление'
+        ELSE act
+    END;
+$$ LANGUAGE sql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION perm_entity_ru(ent TEXT) RETURNS text AS $$
+    SELECT CASE ent
+        WHEN 'pbx'          THEN 'АТС'
+        WHEN 'subscriber'   THEN 'Абоненты'
+        WHEN 'phone_number' THEN 'Номера'
+        WHEN 'address'      THEN 'Адреса'
+        WHEN 'city'         THEN 'Города'
+        WHEN 'call'         THEN 'Звонки'
+        WHEN 'tariff'       THEN 'Тарифы'
+        WHEN 'invoice'      THEN 'Счета'
+        WHEN 'payment'      THEN 'Платежи'
+        WHEN 'penalty'      THEN 'Пени'
+        WHEN 'notification' THEN 'Уведомления'
+        WHEN 'queue'        THEN 'Очередь установки'
+        WHEN 'public_phone' THEN 'Таксофоны'
+        WHEN 'user'         THEN 'Пользователи'
+        WHEN 'role'         THEN 'Роли'
+        WHEN 'billing_settings' THEN 'Настройки биллинга'
+        WHEN 'pbx_city'         THEN 'АТС: городские'
+        WHEN 'pbx_department'   THEN 'АТС: ведомственные'
+        WHEN 'pbx_institution'  THEN 'АТС: учрежденческие'
+        ELSE replace(ent, '_', ' ')
+    END;
+$$ LANGUAGE sql IMMUTABLE;
+
 -- Permission catalog: <entity>:<action> + a few special permissions.
+-- Russian, human-readable descriptions ("<Действие> — <Сущность>").
 DO $$
 DECLARE
     ent  TEXT;
@@ -13,27 +50,31 @@ DECLARE
         'queue','public_phone','user','role'
     ];
     acts TEXT[] := ARRAY['read','create','update','delete'];
+    act_ru TEXT;
+    ent_ru TEXT;
 BEGIN
     FOREACH ent IN ARRAY ents LOOP
+        ent_ru := perm_entity_ru(ent);
         FOREACH act IN ARRAY acts LOOP
+            act_ru := perm_action_ru(act);
             INSERT INTO permission(code, description)
-            VALUES (ent || ':' || act, initcap(act) || ' ' || replace(ent, '_', ' '))
+            VALUES (ent || ':' || act, act_ru || ' — ' || ent_ru)
             ON CONFLICT (code) DO NOTHING;
         END LOOP;
     END LOOP;
 
     INSERT INTO permission(code, description) VALUES
-        ('analytics:read', 'Run analytical (variant) queries'),
-        ('raw_query:run',  'Execute user-provided raw SQL'),
-        ('rbac:manage',    'Manage roles and permissions')
+        ('analytics:read', 'Аналитические запросы (по варианту)'),
+        ('raw_query:run',  'Выполнение произвольных SQL-запросов (SELECT)'),
+        ('rbac:manage',    'Управление ролями и правами')
     ON CONFLICT (code) DO NOTHING;
 END $$;
 
 -- System roles (cannot be deleted; superadmin can still create custom roles).
 INSERT INTO role (name, description, is_system) VALUES
-    ('superadmin', 'Full access to everything', TRUE),
-    ('operator',   'Manage telephone-network data, run analytics & raw queries', TRUE),
-    ('viewer',     'Read-only access', TRUE)
+    ('superadmin', 'Полный доступ ко всему', TRUE),
+    ('operator',   'Управление данными сети, аналитика и SQL-запросы', TRUE),
+    ('viewer',     'Доступ только для чтения', TRUE)
 ON CONFLICT (name) DO NOTHING;
 
 -- superadmin: every permission.
