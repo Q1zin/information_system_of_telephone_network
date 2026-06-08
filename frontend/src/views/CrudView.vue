@@ -2,7 +2,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { resourceByKey } from '@/config/resources'
+import { resourceByKey, type FieldDef } from '@/config/resources'
 import { listResource, createResource, updateResource, deleteResource } from '@/api/crud'
 import { useAuthStore } from '@/stores/auth'
 import type { Row } from '@/api/types'
@@ -26,6 +26,27 @@ const form = reactive<Row>({})
 // Loaded options for FK reference selects, keyed by REST path.
 const refOptions = reactive<Record<string, { value: any; label: string }[]>>({})
 const refLoading = reactive<Record<string, boolean>>({})
+
+// Columns that mirror a reference/enum field are rendered as readable labels.
+const labeledFieldByProp = computed(() => {
+  const m: Record<string, FieldDef> = {}
+  for (const f of resource.value?.fields || []) {
+    if (f.type === 'reference' || f.type === 'select') m[f.prop] = f
+  }
+  return m
+})
+
+function cellLabel(prop: string, value: any): string {
+  if (value === null || value === undefined || value === '') return ''
+  if (typeof value === 'boolean') return value ? 'Да' : 'Нет'
+  const f = labeledFieldByProp.value[prop]
+  if (!f) return String(value)
+  if (f.type === 'reference') {
+    const opt = (refOptions[f.refPath!] || []).find((o) => o.value === value)
+    return opt ? opt.label : String(value)
+  }
+  return f.options?.find((o) => o.value === value)?.label ?? String(value)
+}
 
 async function loadRefOptions() {
   if (!resource.value) return
@@ -65,6 +86,7 @@ async function load() {
     const data = await listResource(resource.value.path, page.value, pageSize.value)
     rows.value = data.items
     total.value = data.total
+    loadRefOptions() // resolve FK columns to readable labels
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
@@ -150,7 +172,9 @@ onMounted(load)
         :prop="c.prop"
         :label="c.label"
         :width="c.width"
-      />
+      >
+        <template #default="{ row }">{{ cellLabel(c.prop, row[c.prop]) }}</template>
+      </el-table-column>
       <el-table-column v-if="canUpdate || canDelete" label="Действия" width="150" fixed="right">
         <template #default="{ row }">
           <el-button v-if="canUpdate" size="small" @click="openEdit(row)">Изм.</el-button>
