@@ -38,7 +38,8 @@ docs/schema.dbml-- ER-диаграмма (dbdiagram.io)
 docs/guide.pdf  -- учебный разбор «для защиты» (БД, запросы, CRUD, Rust, SeaORM)
 docs/crud.pdf   -- подробный разбор CRUD-операций (от браузера до SQL)
 docs/queries.pdf-- построчный разбор всех 13 SQL-запросов варианта
-docs/migrations.pdf -- разбор каждой миграции БД (0001–0012)
+docs/migrations.pdf -- разбор каждой миграции БД (0001–0014)
+docs/auth.pdf   -- авторизация: аутентификация, сессии, RBAC, защита (бэк + фронт)
 docs/data-model-story.pdf -- рассказ по схеме (talk-track для защиты по ER-диаграмме)
 ```
 
