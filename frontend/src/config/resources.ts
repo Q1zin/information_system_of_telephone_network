@@ -1,7 +1,7 @@
 import type { Opt } from './enums'
 import * as E from './enums'
 
-export type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'date' | 'datetime' | 'switch'
+export type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'date' | 'datetime' | 'switch' | 'reference'
 
 export interface FieldDef {
   prop: string
@@ -9,6 +9,9 @@ export interface FieldDef {
   type: FieldType
   required?: boolean
   options?: Opt[]
+  refPath?: string // REST path of the referenced resource to load options from
+  refValue?: string // value field on the referenced row (default 'id')
+  refLabel?: (row: Record<string, any>) => string // builds the human-readable option label
 }
 
 export interface ColumnDef {
@@ -30,6 +33,24 @@ export interface ResourceDef {
 const t = (prop: string, label: string, required = false): FieldDef => ({ prop, label, type: 'text', required })
 const n = (prop: string, label: string, required = false): FieldDef => ({ prop, label, type: 'number', required })
 const sel = (prop: string, label: string, options: Opt[], required = false): FieldDef => ({ prop, label, type: 'select', options, required })
+const ref = (
+  prop: string,
+  label: string,
+  refPath: string,
+  refLabel: (row: Record<string, any>) => string,
+  required = false,
+): FieldDef => ({ prop, label, type: 'reference', refPath, refLabel, required })
+
+// Option-label builders for referenced records (FK selects).
+type R = Record<string, any>
+const cityLabel = (r: R) => `#${r.id} · ${r.name}`
+const addressLabel = (r: R) =>
+  `#${r.id} · ${[r.street && `${r.street}`, r.house && `д.${r.house}`, r.apartment && `кв.${r.apartment}`].filter(Boolean).join(', ')}`
+const pbxLabel = (r: R) => `#${r.id} · ${r.name} (${r.code})`
+const numberLabel = (r: R) => `#${r.id} · ${r.number}`
+const subscriberLabel = (r: R) =>
+  `#${r.id} · ${[r.last_name, r.first_name, r.middle_name].filter(Boolean).join(' ')}`
+const invoiceLabel = (r: R) => `#${r.id} · ${r.kind} · ${r.amount}₽`
 
 export const resources: ResourceDef[] = [
   {
@@ -55,7 +76,7 @@ export const resources: ResourceDef[] = [
     ],
     fields: [
       t('name', 'Название', true), t('code', 'Код', true), sel('pbx_type', 'Тип', E.pbxTypeOptions, true),
-      t('district', 'Район', true), n('address_id', 'ID адреса'), n('capacity_numbers', 'Ёмкость номеров', true),
+      t('district', 'Район', true), ref('address_id', 'Адрес', 'addresses', addressLabel), n('capacity_numbers', 'Ёмкость номеров', true),
       n('total_channels', 'Всего каналов', true), n('free_channels', 'Свободно каналов', true),
       { prop: 'has_free_cable', label: 'Есть кабель', type: 'switch' },
     ],
@@ -66,7 +87,7 @@ export const resources: ResourceDef[] = [
       { prop: 'pbx_id', label: 'ID АТС', width: 90 }, { prop: 'intercity_enabled', label: 'Межгород вкл.' },
       { prop: 'region_code', label: 'Код региона' },
     ],
-    fields: [n('pbx_id', 'ID АТС (city)', true), { prop: 'intercity_enabled', label: 'Межгород включён', type: 'switch' }, t('region_code', 'Код региона')],
+    fields: [ref('pbx_id', 'АТС', 'pbx', pbxLabel, true), { prop: 'intercity_enabled', label: 'Межгород включён', type: 'switch' }, t('region_code', 'Код региона')],
   },
   {
     key: 'pbx-department', path: 'pbx-department', title: 'АТС: ведомственные', perm: 'pbx_department', idField: 'pbx_id',
@@ -74,7 +95,7 @@ export const resources: ResourceDef[] = [
       { prop: 'pbx_id', label: 'ID АТС', width: 90 }, { prop: 'department_name', label: 'Ведомство' },
       { prop: 'closed_network', label: 'Замкнутая сеть' },
     ],
-    fields: [n('pbx_id', 'ID АТС (departmental)', true), t('department_name', 'Ведомство', true), { prop: 'closed_network', label: 'Замкнутая сеть', type: 'switch' }],
+    fields: [ref('pbx_id', 'АТС', 'pbx', pbxLabel, true), t('department_name', 'Ведомство', true), { prop: 'closed_network', label: 'Замкнутая сеть', type: 'switch' }],
   },
   {
     key: 'pbx-institution', path: 'pbx-institution', title: 'АТС: учрежденческие', perm: 'pbx_institution', idField: 'pbx_id',
@@ -82,7 +103,7 @@ export const resources: ResourceDef[] = [
       { prop: 'pbx_id', label: 'ID АТС', width: 90 }, { prop: 'institution_name', label: 'Учреждение' },
       { prop: 'parent_department', label: 'Вышестоящее' }, { prop: 'closed_network', label: 'Замкнутая сеть' },
     ],
-    fields: [n('pbx_id', 'ID АТС (institutional)', true), t('institution_name', 'Учреждение', true), t('parent_department', 'Вышестоящее ведомство'), { prop: 'closed_network', label: 'Замкнутая сеть', type: 'switch' }],
+    fields: [ref('pbx_id', 'АТС', 'pbx', pbxLabel, true), t('institution_name', 'Учреждение', true), t('parent_department', 'Вышестоящее ведомство'), { prop: 'closed_network', label: 'Замкнутая сеть', type: 'switch' }],
   },
   {
     key: 'phone-numbers', path: 'phone-numbers', title: 'Номера', perm: 'phone_number',
@@ -91,8 +112,8 @@ export const resources: ResourceDef[] = [
       { prop: 'line_type', label: 'Тип линии' }, { prop: 'intercity', label: 'Межгород' }, { prop: 'status', label: 'Статус' },
     ],
     fields: [
-      t('number', 'Номер', true), n('pbx_id', 'ID АТС', true), sel('line_type', 'Тип линии', E.lineTypeOptions),
-      sel('intercity', 'Межгород', E.intercityOptions), sel('status', 'Статус', E.numberStatusOptions), n('address_id', 'ID адреса'),
+      t('number', 'Номер', true), ref('pbx_id', 'АТС', 'pbx', pbxLabel, true), sel('line_type', 'Тип линии', E.lineTypeOptions),
+      sel('intercity', 'Межгород', E.intercityOptions), sel('status', 'Статус', E.numberStatusOptions), ref('address_id', 'Адрес', 'addresses', addressLabel),
     ],
   },
   {
@@ -105,7 +126,7 @@ export const resources: ResourceDef[] = [
       t('last_name', 'Фамилия', true), t('first_name', 'Имя', true), t('middle_name', 'Отчество'),
       sel('gender', 'Пол', E.genderOptions, true), { prop: 'birth_date', label: 'Дата рождения', type: 'date', required: true },
       sel('category', 'Категория', E.categoryOptions), sel('privilege', 'Льгота', E.privilegeOptions),
-      sel('status', 'Статус', E.subStatusOptions), n('phone_number_id', 'ID номера', true), n('address_id', 'ID адреса', true),
+      sel('status', 'Статус', E.subStatusOptions), ref('phone_number_id', 'Номер', 'phone-numbers', numberLabel, true), ref('address_id', 'Адрес', 'addresses', addressLabel, true),
       { prop: 'connected_at', label: 'Подключён', type: 'date' },
     ],
   },
@@ -116,8 +137,8 @@ export const resources: ResourceDef[] = [
       { prop: 'dest_city_id', label: 'Город' }, { prop: 'duration_sec', label: 'Длит., c' }, { prop: 'cost', label: 'Стоимость' },
     ],
     fields: [
-      n('from_number_id', 'ID номера-источника', true), sel('call_type', 'Тип', E.callTypeOptions, true),
-      n('dest_city_id', 'ID города (для межгорода)'), { prop: 'started_at', label: 'Начало', type: 'datetime', required: true },
+      ref('from_number_id', 'Номер-источник', 'phone-numbers', numberLabel, true), sel('call_type', 'Тип', E.callTypeOptions, true),
+      ref('dest_city_id', 'Город (для межгорода)', 'cities', cityLabel), { prop: 'started_at', label: 'Начало', type: 'datetime', required: true },
       n('duration_sec', 'Длительность, c', true), n('cost', 'Стоимость'),
     ],
   },
@@ -139,7 +160,7 @@ export const resources: ResourceDef[] = [
       { prop: 'amount', label: 'Сумма' }, { prop: 'due_date', label: 'Срок' }, { prop: 'status', label: 'Статус' },
     ],
     fields: [
-      n('subscriber_id', 'ID абонента', true), sel('kind', 'Вид', E.invoiceKindOptions, true),
+      ref('subscriber_id', 'Абонент', 'subscribers', subscriberLabel, true), sel('kind', 'Вид', E.invoiceKindOptions, true),
       n('period_year', 'Год', true), n('period_month', 'Месяц', true), n('amount', 'Сумма', true),
       { prop: 'due_date', label: 'Срок оплаты', type: 'date', required: true }, sel('status', 'Статус', E.invoiceStatusOptions),
     ],
@@ -150,7 +171,7 @@ export const resources: ResourceDef[] = [
       { prop: 'id', label: 'ID', width: 70 }, { prop: 'subscriber_id', label: 'Абонент' },
       { prop: 'invoice_id', label: 'Счёт' }, { prop: 'amount', label: 'Сумма' }, { prop: 'paid_at', label: 'Дата' },
     ],
-    fields: [n('subscriber_id', 'ID абонента', true), n('invoice_id', 'ID счёта'), n('amount', 'Сумма', true)],
+    fields: [ref('subscriber_id', 'Абонент', 'subscribers', subscriberLabel, true), ref('invoice_id', 'Счёт', 'invoices', invoiceLabel), n('amount', 'Сумма', true)],
   },
   {
     key: 'penalties', path: 'penalties', title: 'Пени', perm: 'penalty',
@@ -159,7 +180,7 @@ export const resources: ResourceDef[] = [
       { prop: 'amount', label: 'Сумма' }, { prop: 'reason', label: 'Причина' }, { prop: 'paid', label: 'Оплачена' },
     ],
     fields: [
-      n('subscriber_id', 'ID абонента', true), n('invoice_id', 'ID счёта'), n('amount', 'Сумма', true),
+      ref('subscriber_id', 'Абонент', 'subscribers', subscriberLabel, true), ref('invoice_id', 'Счёт', 'invoices', invoiceLabel), n('amount', 'Сумма', true),
       t('reason', 'Причина'), { prop: 'paid', label: 'Оплачена', type: 'switch' },
     ],
   },
@@ -170,7 +191,7 @@ export const resources: ResourceDef[] = [
       { prop: 'sent_at', label: 'Отправлено' }, { prop: 'deadline', label: 'Дедлайн' }, { prop: 'resolved', label: 'Закрыто' },
     ],
     fields: [
-      n('subscriber_id', 'ID абонента', true),
+      ref('subscriber_id', 'Абонент', 'subscribers', subscriberLabel, true),
       sel('kind', 'Вид', [{ label: 'Долг абонплата', value: 'subscription_debt' }, { label: 'Долг межгород', value: 'intercity_debt' }], true),
       { prop: 'deadline', label: 'Дедлайн', type: 'date', required: true }, { prop: 'resolved', label: 'Закрыто', type: 'switch' },
     ],
@@ -183,7 +204,7 @@ export const resources: ResourceDef[] = [
     ],
     fields: [
       t('applicant_last_name', 'Фамилия', true), t('applicant_first_name', 'Имя', true), t('applicant_middle_name', 'Отчество'),
-      sel('queue_type', 'Очередь', E.queueTypeOptions), n('address_id', 'ID адреса', true), n('desired_pbx_id', 'ID желаемой АТС'),
+      sel('queue_type', 'Очередь', E.queueTypeOptions), ref('address_id', 'Адрес', 'addresses', addressLabel, true), ref('desired_pbx_id', 'Желаемая АТС', 'pbx', pbxLabel),
       sel('status', 'Статус', E.queueStatusOptions),
     ],
   },
@@ -194,8 +215,8 @@ export const resources: ResourceDef[] = [
       { prop: 'address_id', label: 'Адрес' }, { prop: 'active', label: 'Активен' },
     ],
     fields: [
-      sel('kind', 'Вид', E.publicKindOptions, true), n('pbx_id', 'ID АТС', true), n('address_id', 'ID адреса', true),
-      n('phone_number_id', 'ID номера'), { prop: 'active', label: 'Активен', type: 'switch' },
+      sel('kind', 'Вид', E.publicKindOptions, true), ref('pbx_id', 'АТС', 'pbx', pbxLabel, true), ref('address_id', 'Адрес', 'addresses', addressLabel, true),
+      ref('phone_number_id', 'Номер', 'phone-numbers', numberLabel), { prop: 'active', label: 'Активен', type: 'switch' },
     ],
   },
 ]

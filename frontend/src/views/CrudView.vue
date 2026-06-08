@@ -23,6 +23,37 @@ const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<Row>({})
 
+// Loaded options for FK reference selects, keyed by REST path.
+const refOptions = reactive<Record<string, { value: any; label: string }[]>>({})
+const refLoading = reactive<Record<string, boolean>>({})
+
+async function loadRefOptions() {
+  if (!resource.value) return
+  const refFields = resource.value.fields.filter((f) => f.type === 'reference')
+  for (const f of refFields) {
+    const path = f.refPath!
+    if (refOptions[path] || refLoading[path]) continue // already loaded/loading for this resource view
+    refLoading[path] = true
+    try {
+      const items: Row[] = []
+      // Backend caps page_size at 200; pull a few pages so the picker is reasonably complete.
+      for (let p = 1; p <= 5; p++) {
+        const data = await listResource(path, p, 200)
+        items.push(...data.items)
+        if (items.length >= data.total || data.items.length === 0) break
+      }
+      refOptions[path] = items.map((it) => ({
+        value: it[f.refValue || 'id'],
+        label: f.refLabel ? f.refLabel(it) : String(it[f.refValue || 'id']),
+      }))
+    } catch {
+      refOptions[path] = []
+    } finally {
+      refLoading[path] = false
+    }
+  }
+}
+
 const canCreate = computed(() => !!resource.value && auth.can(`${resource.value.perm}:create`))
 const canUpdate = computed(() => !!resource.value && auth.can(`${resource.value.perm}:update`))
 const canDelete = computed(() => !!resource.value && auth.can(`${resource.value.perm}:delete`))
@@ -47,12 +78,14 @@ function clearForm() {
 function openCreate() {
   editingId.value = null
   clearForm()
+  loadRefOptions()
   dialogVisible.value = true
 }
 function openEdit(row: Row) {
   editingId.value = row[idKey.value]
   clearForm()
   Object.assign(form, row)
+  loadRefOptions()
   dialogVisible.value = true
 }
 function isPkLocked(prop: string) {
@@ -96,6 +129,7 @@ function onSize(s: number) {
 
 watch(() => route.params.resource, () => {
   page.value = 1
+  for (const k of Object.keys(refOptions)) delete refOptions[k]
   load()
 })
 watch([page, pageSize], load)
@@ -155,6 +189,22 @@ onMounted(load)
           <el-switch v-else-if="f.type === 'switch'" v-model="form[f.prop]" />
           <el-select v-else-if="f.type === 'select'" v-model="form[f.prop]" clearable style="width: 100%">
             <el-option v-for="o in f.options" :key="o.value" :label="o.label" :value="o.value" />
+          </el-select>
+          <el-select
+            v-else-if="f.type === 'reference'"
+            v-model="form[f.prop]"
+            filterable
+            clearable
+            :loading="refLoading[f.refPath!]"
+            :disabled="isPkLocked(f.prop)"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="o in refOptions[f.refPath!] || []"
+              :key="o.value"
+              :label="o.label"
+              :value="o.value"
+            />
           </el-select>
           <el-date-picker
             v-else-if="f.type === 'date'"
