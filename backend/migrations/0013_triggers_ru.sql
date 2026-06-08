@@ -1,12 +1,3 @@
--- 0013_triggers_ru.sql
--- Replaces trigger functions with Russian, human-readable error messages.
--- Idempotent (CREATE OR REPLACE only): safe to apply to an existing database
--- without recreating tables or triggers. On a fresh database these definitions
--- match 0008 and are simply re-applied.
-
--- ---------------------------------------------------------------------------
--- Human-readable Russian labels for enum values embedded in error messages.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION pbx_type_ru(t pbx_type) RETURNS text AS $$
     SELECT CASE t
         WHEN 'city'          THEN 'городская'
@@ -23,9 +14,6 @@ CREATE OR REPLACE FUNCTION line_type_ru(t line_type) RETURNS text AS $$
     END;
 $$ LANGUAGE sql IMMUTABLE;
 
--- ---------------------------------------------------------------------------
--- T1. PBX subtype must match pbx.pbx_type.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_pbx_subtype_check() RETURNS trigger AS $$
 DECLARE
     actual_type   pbx_type;
@@ -45,9 +33,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ---------------------------------------------------------------------------
--- T2. Intercity access is only valid for city PBX numbers.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_number_intercity_check() RETURNS trigger AS $$
 DECLARE
     t pbx_type;
@@ -66,9 +51,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ---------------------------------------------------------------------------
--- T3. Number occupancy by line type.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_subscriber_count_check() RETURNS trigger AS $$
 DECLARE
     lt       line_type;
@@ -91,9 +73,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ---------------------------------------------------------------------------
--- T4. Co-subscribers of one number must live in the same house.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_subscriber_same_house_check() RETURNS trigger AS $$
 DECLARE
     lt        line_type;

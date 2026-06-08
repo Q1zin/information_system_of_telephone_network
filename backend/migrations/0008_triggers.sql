@@ -1,9 +1,3 @@
--- 0008_triggers.sql
--- Integrity rules enforced at the database level (req. 1).
-
--- ---------------------------------------------------------------------------
--- Human-readable Russian labels for enum values embedded in error messages.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION pbx_type_ru(t pbx_type) RETURNS text AS $$
     SELECT CASE t
         WHEN 'city'          THEN 'городская'
@@ -20,9 +14,6 @@ CREATE OR REPLACE FUNCTION line_type_ru(t line_type) RETURNS text AS $$
     END;
 $$ LANGUAGE sql IMMUTABLE;
 
--- ---------------------------------------------------------------------------
--- T1. PBX subtype must match pbx.pbx_type.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_pbx_subtype_check() RETURNS trigger AS $$
 DECLARE
     actual_type   pbx_type;
@@ -49,10 +40,6 @@ CREATE TRIGGER pbx_department_subtype  BEFORE INSERT OR UPDATE ON pbx_department
 CREATE TRIGGER pbx_institution_subtype BEFORE INSERT OR UPDATE ON pbx_institution
     FOR EACH ROW EXECUTE FUNCTION trg_pbx_subtype_check();
 
--- ---------------------------------------------------------------------------
--- T2. Intercity access is only valid for city PBX numbers.
---     Closed-network (departmental/institutional) numbers must be 'none'.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_number_intercity_check() RETURNS trigger AS $$
 DECLARE
     t pbx_type;
@@ -74,10 +61,6 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER number_intercity_check BEFORE INSERT OR UPDATE ON phone_number
     FOR EACH ROW EXECUTE FUNCTION trg_number_intercity_check();
 
--- ---------------------------------------------------------------------------
--- T3. Number occupancy by line type:
---     main  -> at most 1 subscriber, paired -> at most 2, parallel -> many.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_subscriber_count_check() RETURNS trigger AS $$
 DECLARE
     lt       line_type;
@@ -103,11 +86,6 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER subscriber_count_check BEFORE INSERT OR UPDATE ON subscriber
     FOR EACH ROW EXECUTE FUNCTION trg_subscriber_count_check();
 
--- ---------------------------------------------------------------------------
--- T4. Parallel/paired subscribers of one number must live in the same house,
---     and every subscriber must match the number's installation house.
---     (req: "параллельные или спаренные телефоны обязательно в одном доме")
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_subscriber_same_house_check() RETURNS trigger AS $$
 DECLARE
     lt        line_type;
@@ -118,7 +96,6 @@ BEGIN
     SELECT line_type INTO lt FROM phone_number WHERE id = NEW.phone_number_id;
     SELECT * INTO my_addr FROM address WHERE id = NEW.address_id;
 
-    -- Compare with the number's installation address, if any.
     SELECT a.* INTO num_addr
         FROM phone_number p JOIN address a ON a.id = p.address_id
         WHERE p.id = NEW.phone_number_id;
@@ -131,7 +108,6 @@ BEGIN
         END IF;
     END IF;
 
-    -- All co-subscribers of a shared line must be in the same house.
     IF lt IN ('parallel', 'paired') THEN
         FOR other IN
             SELECT a.postal_index, a.district, a.street, a.house
@@ -153,10 +129,6 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER subscriber_same_house_check BEFORE INSERT OR UPDATE ON subscriber
     FOR EACH ROW EXECUTE FUNCTION trg_subscriber_same_house_check();
 
--- ---------------------------------------------------------------------------
--- T5. Keep phone_number.status in sync with the number of attached subscribers
---     (blocked numbers stay blocked and are managed explicitly).
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION sync_number_status(p_number_id BIGINT) RETURNS void AS $$
 DECLARE
     cnt INTEGER;

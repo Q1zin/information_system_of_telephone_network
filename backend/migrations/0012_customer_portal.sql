@@ -1,10 +1,7 @@
--- 0012_customer_portal.sql
--- Self-service customer accounts (личный кабинет абонента).
-
 CREATE TABLE customer (
     id            BIGSERIAL PRIMARY KEY,
     login         TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,                 -- Argon2
+    password_hash TEXT NOT NULL,
     last_name     TEXT NOT NULL,
     first_name    TEXT NOT NULL,
     middle_name   TEXT,
@@ -20,7 +17,6 @@ CREATE TABLE customer (
     )
 );
 
--- Link subscribers and installation requests back to the customer account.
 ALTER TABLE subscriber
     ADD COLUMN customer_id BIGINT REFERENCES customer(id) ON DELETE SET NULL;
 CREATE INDEX ix_subscriber_customer ON subscriber (customer_id);

@@ -1,8 +1,3 @@
--- 0005_billing.sql
--- Tariffs, billing settings, invoices, payments, penalties, notifications.
-
--- Monthly fee depends on line type and whether intercity access is enabled.
--- The privileged discount is applied on top (see billing_settings).
 CREATE TABLE tariff (
     id             BIGSERIAL PRIMARY KEY,
     line_type      line_type NOT NULL,
@@ -12,7 +7,6 @@ CREATE TABLE tariff (
     CONSTRAINT uq_tariff UNIQUE (line_type, with_intercity, valid_from)
 );
 
--- Single-row settings table (id is always 1).
 CREATE TABLE billing_settings (
     id                 SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     privilege_discount NUMERIC(4,3) NOT NULL DEFAULT 0.500 CHECK (privilege_discount BETWEEN 0 AND 1),
@@ -22,7 +16,6 @@ CREATE TABLE billing_settings (
     notice_grace_days  SMALLINT NOT NULL DEFAULT 2 CHECK (notice_grace_days >= 0)
 );
 
--- Monthly charge for a subscriber (subscription fee or intercity charges).
 CREATE TABLE invoice (
     id            BIGSERIAL PRIMARY KEY,
     subscriber_id BIGINT NOT NULL REFERENCES subscriber(id) ON DELETE CASCADE,
@@ -50,7 +43,6 @@ CREATE TABLE payment (
 CREATE INDEX ix_payment_sub ON payment (subscriber_id);
 CREATE INDEX ix_payment_invoice ON payment (invoice_id);
 
--- Пеня за просрочку.
 CREATE TABLE penalty (
     id            BIGSERIAL PRIMARY KEY,
     subscriber_id BIGINT NOT NULL REFERENCES subscriber(id) ON DELETE CASCADE,
@@ -62,7 +54,6 @@ CREATE TABLE penalty (
 );
 CREATE INDEX ix_penalty_sub ON penalty (subscriber_id);
 
--- Письменное уведомление о задолженности (с дедлайном на оплату/отключение).
 CREATE TABLE notification (
     id            BIGSERIAL PRIMARY KEY,
     subscriber_id BIGINT NOT NULL REFERENCES subscriber(id) ON DELETE CASCADE,

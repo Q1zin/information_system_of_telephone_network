@@ -1,8 +1,3 @@
--- 0009_views.sql
--- Helper function + views reused by CRUD listings and analytical queries.
-
--- Monthly subscription fee for a subscriber:
--- tariff(line_type, intercity-open) with a 50% discount for privileged subscribers.
 CREATE OR REPLACE FUNCTION fn_subscriber_monthly_fee(p_subscriber_id BIGINT)
 RETURNS NUMERIC AS $$
 DECLARE
@@ -37,7 +32,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
--- Denormalised subscriber view (subscriber + number + PBX + address + age).
 CREATE OR REPLACE VIEW v_subscriber_full AS
 SELECT s.id,
        s.last_name, s.first_name, s.middle_name,
@@ -54,7 +48,6 @@ JOIN phone_number pn ON pn.id = s.phone_number_id
 JOIN pbx p          ON p.id = pn.pbx_id
 JOIN address a      ON a.id = s.address_id;
 
--- Per-subscriber debt split into subscription / intercity / penalty parts.
 CREATE OR REPLACE VIEW v_subscriber_debt AS
 SELECT s.id AS subscriber_id,
        COALESCE(sub.amt, 0)   AS subscription_debt,
@@ -81,7 +74,6 @@ LEFT JOIN (
     GROUP BY subscriber_id
 ) pen ON pen.subscriber_id = s.id;
 
--- PBX capacity / occupancy summary.
 CREATE OR REPLACE VIEW v_pbx_stats AS
 SELECT p.id AS pbx_id, p.name, p.pbx_type, p.district, p.capacity_numbers,
        p.free_channels, p.has_free_cable,

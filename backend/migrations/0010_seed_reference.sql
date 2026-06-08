@@ -1,8 +1,3 @@
--- 0010_seed_reference.sql
--- Reference data the application depends on: permissions catalog, system roles,
--- billing settings and tariffs. (Demo/business data lives in backend/seeds/.)
-
--- Russian labels for permission actions/entities, used to build descriptions.
 CREATE OR REPLACE FUNCTION perm_action_ru(act TEXT) RETURNS text AS $$
     SELECT CASE act
         WHEN 'read'   THEN 'Просмотр'
@@ -38,8 +33,6 @@ CREATE OR REPLACE FUNCTION perm_entity_ru(ent TEXT) RETURNS text AS $$
     END;
 $$ LANGUAGE sql IMMUTABLE;
 
--- Permission catalog: <entity>:<action> + a few special permissions.
--- Russian, human-readable descriptions ("<Действие> — <Сущность>").
 DO $$
 DECLARE
     ent  TEXT;
@@ -70,21 +63,18 @@ BEGIN
     ON CONFLICT (code) DO NOTHING;
 END $$;
 
--- System roles (cannot be deleted; superadmin can still create custom roles).
 INSERT INTO role (name, description, is_system) VALUES
     ('superadmin', 'Полный доступ ко всему', TRUE),
     ('operator',   'Управление данными сети, аналитика и SQL-запросы', TRUE),
     ('viewer',     'Доступ только для чтения', TRUE)
 ON CONFLICT (name) DO NOTHING;
 
--- superadmin: every permission.
 INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM role r CROSS JOIN permission p
 WHERE r.name = 'superadmin'
 ON CONFLICT DO NOTHING;
 
--- viewer: all read permissions + analytics.
 INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM role r JOIN permission p
@@ -92,8 +82,6 @@ FROM role r JOIN permission p
 WHERE r.name = 'viewer'
 ON CONFLICT DO NOTHING;
 
--- operator: read/create/update on domain entities + analytics + raw query,
--- but no user/role management.
 INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM role r JOIN permission p
@@ -104,7 +92,6 @@ WHERE r.name = 'operator'
   AND p.code NOT LIKE 'role:%'
 ON CONFLICT DO NOTHING;
 
--- Billing settings (single row) and default tariffs.
 INSERT INTO billing_settings (id) VALUES (1) ON CONFLICT DO NOTHING;
 
 INSERT INTO tariff (line_type, with_intercity, monthly_fee) VALUES

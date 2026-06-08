@@ -1,6 +1,3 @@
--- 0011_more_crud_permissions.sql
--- Permissions for the remaining CRUD resources: PBX subtypes + billing settings.
-
 DO $$
 DECLARE
     ent  TEXT;

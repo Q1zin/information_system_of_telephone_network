@@ -1,10 +1,3 @@
--- 0014_descriptions_ru.sql
--- Translates seeded role/permission descriptions to Russian.
--- Idempotent: safe to apply to an existing database (updates current rows) and
--- re-applying on a fresh database is a no-op beyond confirming the same text.
-
--- Russian labels for permission actions/entities (same as 0010, redefined so
--- this migration is self-contained when applied to an already-migrated DB).
 CREATE OR REPLACE FUNCTION perm_action_ru(act TEXT) RETURNS text AS $$
     SELECT CASE act
         WHEN 'read'   THEN 'Просмотр'
@@ -40,7 +33,6 @@ CREATE OR REPLACE FUNCTION perm_entity_ru(ent TEXT) RETURNS text AS $$
     END;
 $$ LANGUAGE sql IMMUTABLE;
 
--- Domain permissions of the form "<entity>:<action>".
 UPDATE permission
    SET description = perm_action_ru(split_part(code, ':', 2))
                      || ' — ' ||
@@ -48,12 +40,10 @@ UPDATE permission
  WHERE code LIKE '%:%'
    AND code NOT IN ('analytics:read', 'raw_query:run', 'rbac:manage');
 
--- Special permissions.
 UPDATE permission SET description = 'Аналитические запросы (по варианту)'        WHERE code = 'analytics:read';
 UPDATE permission SET description = 'Выполнение произвольных SQL-запросов (SELECT)' WHERE code = 'raw_query:run';
 UPDATE permission SET description = 'Управление ролями и правами'                 WHERE code = 'rbac:manage';
 
--- System role descriptions.
 UPDATE role SET description = 'Полный доступ ко всему'                       WHERE name = 'superadmin';
 UPDATE role SET description = 'Управление данными сети, аналитика и SQL-запросы' WHERE name = 'operator';
 UPDATE role SET description = 'Доступ только для чтения'                     WHERE name = 'viewer';

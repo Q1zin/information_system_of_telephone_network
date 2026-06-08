@@ -1,6 +1,3 @@
--- 0006_queue_public.sql
--- Installation queue (regular / privileged) and public phones / payphones.
-
 CREATE TABLE installation_queue (
     id                    BIGSERIAL PRIMARY KEY,
     applicant_last_name   TEXT NOT NULL,
@@ -18,7 +15,6 @@ CREATE INDEX ix_queue_type ON installation_queue (queue_type);
 CREATE INDEX ix_queue_status ON installation_queue (status);
 CREATE INDEX ix_queue_requested ON installation_queue (requested_at);
 
--- Общественные телефоны и таксофоны по адресам.
 CREATE TABLE public_phone (
     id              BIGSERIAL PRIMARY KEY,
     kind            public_phone_kind NOT NULL,

@@ -1,13 +1,9 @@
--- 0007_auth_rbac.sql
--- Authentication + configurable RBAC (ACL). Roles and permissions live in the DB
--- so the superadmin can reconfigure them without code changes (req. 3 & 7).
-
 CREATE TABLE app_user (
     id            BIGSERIAL PRIMARY KEY,
     username      TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,                 -- Argon2 hash, computed by the backend
+    password_hash TEXT NOT NULL,
     full_name     TEXT,
-    is_superadmin BOOLEAN NOT NULL DEFAULT FALSE, -- bypasses permission checks
+    is_superadmin BOOLEAN NOT NULL DEFAULT FALSE,
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_login_at TIMESTAMPTZ
@@ -17,11 +13,10 @@ CREATE TABLE role (
     id          BIGSERIAL PRIMARY KEY,
     name        TEXT NOT NULL UNIQUE,
     description TEXT,
-    is_system   BOOLEAN NOT NULL DEFAULT FALSE,  -- system roles cannot be deleted
+    is_system   BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Permission codes follow the pattern 'entity:action' (e.g. 'subscriber:read').
 CREATE TABLE permission (
     id          BIGSERIAL PRIMARY KEY,
     code        TEXT NOT NULL UNIQUE,

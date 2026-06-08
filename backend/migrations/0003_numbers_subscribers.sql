@@ -1,7 +1,3 @@
--- 0003_numbers_subscribers.sql
--- Phone numbers and subscribers.
--- A number may be shared by several subscribers (parallel/paired lines).
-
 CREATE TABLE phone_number (
     id         BIGSERIAL PRIMARY KEY,
     number     TEXT NOT NULL UNIQUE,
@@ -9,7 +5,7 @@ CREATE TABLE phone_number (
     line_type  line_type NOT NULL DEFAULT 'main',
     intercity  intercity_status NOT NULL DEFAULT 'none',
     status     number_status NOT NULL DEFAULT 'free',
-    address_id BIGINT REFERENCES address(id) ON DELETE RESTRICT,   -- installation address (house)
+    address_id BIGINT REFERENCES address(id) ON DELETE RESTRICT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX ix_phone_pbx ON phone_number (pbx_id);
@@ -34,7 +30,6 @@ CREATE TABLE subscriber (
     connected_at    DATE NOT NULL DEFAULT CURRENT_DATE,
     disconnected_at DATE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    -- privilege kind is required iff the subscriber is privileged
     CONSTRAINT chk_privilege CHECK (
         (category = 'privileged' AND privilege IS NOT NULL) OR
         (category = 'regular'    AND privilege IS NULL)
