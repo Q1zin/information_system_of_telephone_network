@@ -45,7 +45,7 @@ type R = Record<string, any>
 const cityLabel = (r: R) => `#${r.id} · ${r.name}`
 const addressLabel = (r: R) =>
   `#${r.id} · ${[r.street && `${r.street}`, r.house && `д.${r.house}`, r.apartment && `кв.${r.apartment}`].filter(Boolean).join(', ')}`
-const pbxLabel = (r: R) => `#${r.id} · ${r.name} (${r.code})`
+export const pbxLabel = (r: R) => `#${r.id} · ${r.name} (${r.code})`
 const numberLabel = (r: R) => `#${r.id} · ${r.number}`
 const subscriberLabel = (r: R) =>
   `#${r.id} · ${[r.last_name, r.first_name, r.middle_name].filter(Boolean).join(' ')}`
