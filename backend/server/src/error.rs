@@ -131,15 +131,11 @@ fn map_sqlx_err(e: &sqlx::Error) -> (StatusCode, String) {
     (StatusCode::INTERNAL_SERVER_ERROR, INTERNAL.into())
 }
 
-/// Extracts the first `"..."`-quoted identifier following `column ` in a
-/// Postgres error message (e.g. `... column "first_name" ...` -> `first_name`).
 fn column_in_quotes(msg: &str) -> Option<String> {
     let after = msg.split("column \"").nth(1)?;
     after.split('"').next().map(str::to_string)
 }
 
-/// Maps a database column name to a Russian label for user-facing messages,
-/// falling back to the raw column name when unknown.
 fn field_label(col: &str) -> String {
     let label = match col {
         "last_name" | "applicant_last_name" => "Фамилия",
