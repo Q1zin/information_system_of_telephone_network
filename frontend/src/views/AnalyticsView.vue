@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { analyticsQueries } from '@/config/analytics'
-import { runAnalytics } from '@/api/crud'
+import { analyticsQueries, type ResultColumn } from '@/config/analytics'
+import { runAnalytics, listResource } from '@/api/crud'
 import type { Row } from '@/api/types'
 
 const selectedKey = ref(analyticsQueries[0].key)
@@ -10,15 +10,51 @@ const query = computed(() => analyticsQueries.find((q) => q.key === selectedKey.
 
 const params = reactive<Row>({})
 const rows = ref<Row[]>([])
-const columns = ref<string[]>([])
+const columns = ref<ResultColumn[]>([])
 const loading = ref(false)
 const ran = ref(false)
+
+const refOptions = reactive<Record<string, { value: any; label: string }[]>>({})
+const refLoading = reactive<Record<string, boolean>>({})
+
+async function loadRefOptions() {
+  for (const p of query.value.params) {
+    if (p.type !== 'reference' || !p.refPath) continue
+    const path = p.refPath
+    if (refOptions[path] || refLoading[path]) continue
+    refLoading[path] = true
+    try {
+      const items: Row[] = []
+      for (let pg = 1; pg <= 5; pg++) {
+        const data = await listResource(path, pg, 200)
+        items.push(...data.items)
+        if (items.length >= data.total || data.items.length === 0) break
+      }
+      refOptions[path] = items.map((it) => ({
+        value: it[p.refValue || 'id'],
+        label: p.refLabel ? p.refLabel(it) : String(it[p.refValue || 'id']),
+      }))
+    } catch {
+      refOptions[path] = []
+    } finally {
+      refLoading[path] = false
+    }
+  }
+}
+
+function fmtCell(col: ResultColumn, value: any): string {
+  if (value === null || value === undefined || value === '') return ''
+  if (typeof value === 'boolean') return value ? 'Да' : 'Нет'
+  if (col.options) return col.options.find((o) => o.value === value)?.label ?? String(value)
+  return String(value)
+}
 
 function onSelect() {
   for (const k of Object.keys(params)) delete params[k]
   rows.value = []
   columns.value = []
   ran.value = false
+  loadRefOptions()
 }
 
 async function run() {
@@ -30,7 +66,11 @@ async function run() {
     }
     const data = await runAnalytics(query.value.path, clean)
     rows.value = data
-    columns.value = data.length ? Object.keys(data[0]) : []
+    columns.value = query.value.columns.length
+      ? query.value.columns
+      : data.length
+        ? Object.keys(data[0]).map((k) => ({ prop: k, label: k }))
+        : []
     ran.value = true
   } catch (e: any) {
     ElMessage.error(e.message)
@@ -38,6 +78,8 @@ async function run() {
     loading.value = false
   }
 }
+
+onMounted(loadRefOptions)
 </script>
 
 <template>
@@ -64,6 +106,21 @@ async function run() {
           <el-select v-else-if="p.type === 'select'" v-model="params[p.name]" clearable style="width: 180px">
             <el-option v-for="o in p.options" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
+          <el-select
+            v-else-if="p.type === 'reference'"
+            v-model="params[p.name]"
+            filterable
+            clearable
+            :loading="refLoading[p.refPath!]"
+            style="width: 220px"
+          >
+            <el-option
+              v-for="o in refOptions[p.refPath!] || []"
+              :key="o.value"
+              :label="o.label"
+              :value="o.value"
+            />
+          </el-select>
           <el-date-picker
             v-else-if="p.type === 'date'"
             v-model="params[p.name]"
@@ -80,7 +137,9 @@ async function run() {
 
   <div class="result-meta" v-if="ran">Найдено записей: {{ rows.length }}</div>
   <el-table v-if="columns.length" :data="rows" border stripe>
-    <el-table-column v-for="c in columns" :key="c" :prop="c" :label="c" />
+    <el-table-column v-for="col in columns" :key="col.prop" :prop="col.prop" :label="col.label">
+      <template #default="{ row }">{{ fmtCell(col, row[col.prop]) }}</template>
+    </el-table-column>
   </el-table>
   <el-empty v-else-if="ran" description="Нет данных" />
 </template>
