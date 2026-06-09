@@ -9,9 +9,9 @@ export interface FieldDef {
   type: FieldType
   required?: boolean
   options?: Opt[]
-  refPath?: string // REST path of the referenced resource to load options from
-  refValue?: string // value field on the referenced row (default 'id')
-  refLabel?: (row: Record<string, any>) => string // builds the human-readable option label
+  refPath?: string
+  refValue?: string
+  refLabel?: (row: Record<string, any>) => string
 }
 
 export interface ColumnDef {
@@ -21,13 +21,13 @@ export interface ColumnDef {
 }
 
 export interface ResourceDef {
-  key: string // route param + permission resource name
-  path: string // REST path under /api
+  key: string
+  path: string
   title: string
-  perm: string // permission resource name (entity)
+  perm: string
   columns: ColumnDef[]
   fields: FieldDef[]
-  idField?: string // primary-key field name (default 'id')
+  idField?: string
 }
 
 const t = (prop: string, label: string, required = false): FieldDef => ({ prop, label, type: 'text', required })
@@ -41,7 +41,6 @@ const ref = (
   required = false,
 ): FieldDef => ({ prop, label, type: 'reference', refPath, refLabel, required })
 
-// Option-label builders for referenced records (FK selects).
 type R = Record<string, any>
 const cityLabel = (r: R) => `#${r.id} · ${r.name}`
 const addressLabel = (r: R) =>

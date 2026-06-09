@@ -1,4 +1,3 @@
-// Shared option lists matching the database enum values (Russian labels).
 export interface Opt {
   label: string
   value: string

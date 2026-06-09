@@ -23,11 +23,9 @@ const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<Row>({})
 
-// Loaded options for FK reference selects, keyed by REST path.
 const refOptions = reactive<Record<string, { value: any; label: string }[]>>({})
 const refLoading = reactive<Record<string, boolean>>({})
 
-// Columns that mirror a reference/enum field are rendered as readable labels.
 const labeledFieldByProp = computed(() => {
   const m: Record<string, FieldDef> = {}
   for (const f of resource.value?.fields || []) {
@@ -53,11 +51,10 @@ async function loadRefOptions() {
   const refFields = resource.value.fields.filter((f) => f.type === 'reference')
   for (const f of refFields) {
     const path = f.refPath!
-    if (refOptions[path] || refLoading[path]) continue // already loaded/loading for this resource view
+    if (refOptions[path] || refLoading[path]) continue 
     refLoading[path] = true
     try {
       const items: Row[] = []
-      // Backend caps page_size at 200; pull a few pages so the picker is reasonably complete.
       for (let p = 1; p <= 5; p++) {
         const data = await listResource(path, p, 200)
         items.push(...data.items)
@@ -86,7 +83,7 @@ async function load() {
     const data = await listResource(resource.value.path, page.value, pageSize.value)
     rows.value = data.items
     total.value = data.total
-    loadRefOptions() // resolve FK columns to readable labels
+    loadRefOptions()
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
